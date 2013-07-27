@@ -1,0 +1,6 @@
+*.pyc
+*.pyo
+.*.swp
+db
+cache
+build_db

@@ -33,7 +33,7 @@ log.addHandler(loghandler)
 
 
 _pkg_list = set(db.pkg_list())
-_pkg_checked = set()
+_pkg_checked = {}
 _remote_pkgs = db.remote_pkgs()
 
 def remote_pkgver(name):
@@ -69,7 +69,7 @@ def make_pkg(pkgname):
 
 def check_pkg(pkgname):
 	if pkgname in _pkg_checked:
-		return False
+		return _pkg_checked[pkgname]
 
 	do_build = False
 	pkg_aur = aur.get(pkgname)
@@ -114,12 +114,12 @@ def check_pkg(pkgname):
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 			do_build = True
 
-	_pkg_checked.add(pkgname)
-
 	if do_build:
 		make_pkg(pkgname)
+		_pkg_checked[pkgname] = True
 		return True
 	else:
+		_pkg_checked[pkgname] = False
 		return False
 
 #check_pkg(args.pkg)

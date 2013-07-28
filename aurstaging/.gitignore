@@ -1,0 +1,7 @@
+*.db
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.tar.Z
+*.tgz
+*.tar

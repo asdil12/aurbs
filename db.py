@@ -65,12 +65,12 @@ def convert_provide(provide, version):
 		return (provide, version)
 
 
-def remote_pkgs():
+def remote_pkgs(chroot='/'):
 	log.info("Reading pacman sync repos...")
 	pkgs = {}
 	pkg_last = None
-	for sdb in filter(lambda d: d.endswith('.db'), os.listdir('/var/lib/pacman/sync/')):
-		tar = tarfile.open(os.path.join('/var/lib/pacman/sync/', sdb))
+	for sdb in filter(lambda d: d.endswith('.db'), os.listdir(os.path.join(chroot, 'var/lib/pacman/sync/'))):
+		tar = tarfile.open(os.path.join(chroot, 'var/lib/pacman/sync/', sdb))
 		for m in tar.getmembers():
 			if m.isdir():
 				[pkgname, pkgver, pkgrel] = m.name.rsplit("-", 2)

@@ -1,6 +1,7 @@
 #!/usr/bin/python2
 
 import sys
+import os
 import subprocess
 from pkg_resources import parse_version
 
@@ -11,6 +12,10 @@ import argparse
 
 import aur
 import db
+from webserver import WebServer
+
+
+chroot = '/root/chroot'
 
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
@@ -32,12 +37,16 @@ else:
 log.addHandler(loghandler)
 
 
-_pkg_list = set(db.pkg_list())
-_pkg_checked = {}
-_remote_pkgs = db.remote_pkgs()
+pkg_list = set(db.pkg_list())
+pkg_checked = {}
+
+webserver = WebServer('repo', 8024)
+
+subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
+remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
 
 def remote_pkgver(name):
-	return _remote_pkgs[name]
+	return remote_pkgs[name]
 
 def version_newer(old, new):
 	return parse_version(new) > parse_version(old)
@@ -49,9 +58,9 @@ def filter_dependencies(args, local=True, nofilter=False):
 	if nofilter:
 		return deps
 	if local:
-		return filter(lambda d: d in _pkg_list, deps)
+		return filter(lambda d: d in pkg_list, deps)
 	else:
-		return filter(lambda d: d not in _pkg_list, deps)
+		return filter(lambda d: d not in pkg_list, deps)
 
 def make_pkg(pkgname):
 	pkg = db.get(pkgname)
@@ -68,8 +77,8 @@ def make_pkg(pkgname):
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
 def check_pkg(pkgname):
-	if pkgname in _pkg_checked:
-		return _pkg_checked[pkgname]
+	if pkgname in pkg_checked:
+		return pkg_checked[pkgname]
 
 	do_build = False
 	pkg_aur = aur.get(pkgname)
@@ -116,13 +125,31 @@ def check_pkg(pkgname):
 
 	if do_build:
 		make_pkg(pkgname)
-		_pkg_checked[pkgname] = True
+		pkg_checked[pkgname] = True
 		return True
 	else:
-		_pkg_checked[pkgname] = False
+		pkg_checked[pkgname] = False
 		return False
 
 #check_pkg(args.pkg)
 
-for pkg in _pkg_list:
+# create chroot:
+#  pacman -S devtools
+#  mkdir ~/chroot
+#  CHROOT=$HOME/chroot
+#  mkarchroot $CHROOT/root base-devel
+
+# at build
+# cd build ; tar xvf ../cache/pkg.tar.gz
+# sudo makechrootpkg -cu -l build -r $CHROOT
+# delete old pkg in repo
+#   repo-remove repo.db.tar.gz pkgname-*
+#   rm pkgname-*
+#   cp pkg -> repo
+#   repo-add repo.db.tar.gz pkgname-pkgvar-pkgrel.tar.xz
+
+
+for pkg in pkg_list:
 	check_pkg(pkg)
+
+webserver.stop()

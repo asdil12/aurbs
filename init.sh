@@ -23,5 +23,5 @@ if ! grep -q aurstaging $CHROOT/root/etc/pacman.conf ; then
 fi
 
 if ! [ -e ~/.makepkg.conf ] || ! grep -q PACKAGER ~/.makepkg.conf ; then
-	echo "PACKAGER=Dominik Heidler <dheidler@gmail.com>" >> ~/.makepkg.conf
+	echo "PACKAGER=\"Dominik Heidler <dheidler@gmail.com>\"" >> ~/.makepkg.conf
 fi

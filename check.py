@@ -2,6 +2,7 @@
 
 import sys
 import os
+import shutil
 import subprocess
 from pkg_resources import parse_version
 
@@ -40,7 +41,7 @@ log.addHandler(loghandler)
 pkg_list = set(db.pkg_list())
 pkg_checked = {}
 
-webserver = WebServer('repo', 8024)
+webserver = WebServer('aurstaging', 8024)
 
 subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
 remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
@@ -62,6 +63,22 @@ def filter_dependencies(args, local=True, nofilter=False):
 	else:
 		return filter(lambda d: d not in pkg_list, deps)
 
+def publish_pkg(pkgname, version):
+	arch = 'x86_64'
+	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
+	repodir = os.path.join('aurstaging', arch)
+	for item in os.listdir(repodir):
+		print item
+		if item.endswith('pkg.tar.xz'):
+			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
+			if ipkgname == pkgname:
+				log.debug("Removing '%s' from repo db" % ipkgname)
+				subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir)
+				os.remove(item)
+	shutil.copyfile(os.path.join('build', pkgname, filename), os.path.join(repodir, filename))
+	log.debug("Adding '%s' to repo db" % item)
+	subprocess.call(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir)
+
 def make_pkg(pkgname):
 	pkg = db.get(pkgname)
 	deps = {}
@@ -73,8 +90,14 @@ def make_pkg(pkgname):
 				deps[dep] = db.get_build(dep).version
 			except:
 				log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
-	db.set_build(pkgname, deps)
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
+
+	subprocess.call(['bsdtar', 'xvf', os.path.join('..', 'cache', '%s.tar.gz' % pkgname)], cwd='build')
+	subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Sy", "--noconfirm"])
+	subprocess.call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join('build', pkgname))
+	publish_pkg(pkgname, pkg.version)
+	db.set_build(pkgname, deps)
+	log.warning("DONE BUILDING PKG: %s" % (pkgname))
 
 def check_pkg(pkgname):
 	if pkgname in pkg_checked:
@@ -149,7 +172,8 @@ def check_pkg(pkgname):
 #   repo-add repo.db.tar.gz pkgname-pkgvar-pkgrel.tar.xz
 
 
-for pkg in pkg_list:
-	check_pkg(pkg)
-
-webserver.stop()
+try:
+	for pkg in pkg_list:
+		check_pkg(pkg)
+finally:
+	webserver.stop()

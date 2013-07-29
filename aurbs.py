@@ -57,7 +57,6 @@ def filter_dependencies(args, local=True, nofilter=False):
 
 def publish_pkg(pkgname, version, arch):
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
-	repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 	cachedir = '/var/cache/pacman/pkg/'
 
 	for item in os.listdir(repodir):
@@ -99,7 +98,8 @@ def make_pkg(pkgname, arch):
 	subprocess.call(['bsdtar', 'xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir)
 	subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Sy", "--noconfirm"])
 	subprocess.call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join(build_dir, pkgname))
-	publish_pkg(pkgname, pkg.version, arch)
+	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
+	publish_pkg(pkgname, pkg.version, arch_publish)
 	db.set_build(pkgname, deps, arch)
 	log.warning("DONE BUILDING PKG: %s" % (pkgname))
 
@@ -186,6 +186,7 @@ try:
 	arch = 'x86_64'
 	chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 	build_dir = os.path.join('/var/cache/aurbs/build', arch)
+	repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 
 	# Create chroot, if missing
 	if not os.path.exists(os.path.join(chroot, 'root')):

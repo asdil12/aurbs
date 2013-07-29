@@ -4,6 +4,7 @@ import simplejson as json
 import tarfile
 import os
 import logging
+import time
 
 import aur
 from model import *
@@ -48,7 +49,7 @@ def get_build(pkgname):
 def set_build(pkgname, dependencies):
 	b = PkgBuild(get(pkgname)._data)
 	b._data['linkdepends'] = dependencies
-	#b._data['build_date'] = date()
+	b._data['build_time'] = int(time.time())
 	json.dump(b._data, open('build_db/%s.json' % pkgname, 'w'), sort_keys=True, indent=4)
 
 
@@ -91,6 +92,6 @@ def pkg_list():
 	return [
 		'libuhd',
 		'gnuradio',
-		'gr-osmosdr-git',
+		'gr-osmosdr',
 		'gqrx',
 	]

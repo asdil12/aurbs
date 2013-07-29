@@ -20,7 +20,7 @@ from webserver import WebServer
 parser = argparse.ArgumentParser(description='AUR Build Service')
 #parser.add_argument('pkg', help='PKG to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
-parser.add_argument('-v', '--verbose', action='store_true', help='Log all traffic - including beacon')
+parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEBUG')
 args = parser.parse_args()
 
 

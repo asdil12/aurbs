@@ -1,0 +1,6 @@
+- pacman -S devtools
+- run `init.py` to create directory structure
+- change `PACKAGER` to match your name/email in
+	- `/usr/share/aurbs/cfg/makepkg.conf.i686`
+	- `/usr/share/aurbs/cfg/makepkg.conf.x86_64`
+- run `aurbs.py` to build pkgs

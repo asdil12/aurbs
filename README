@@ -1,5 +1,0 @@
-pacman -S devtools
-
-
-run init.py
-run check.py to build pkgs

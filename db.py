@@ -26,8 +26,15 @@ def import_pkg(pkgname):
 	tar = tarfile.open('/var/cache/aurbs/srcpkgs/%s.tar.gz' % pkgname)
 	pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkgname))
 	a = aur.get(pkgname)
-	a._data['depends'] = _clean_dep_ver(pkgbuild['depends'])
-	a._data['makedepends'] = _clean_dep_ver(pkgbuild['makedepends'])
+	try:
+		a._data['depends'] = _clean_dep_ver(pkgbuild['depends'])
+	except KeyError:
+		a._data['depends'] = []
+	try:
+		a._data['makedepends'] = _clean_dep_ver(pkgbuild['makedepends'])
+	except KeyError:
+		a._data['makedepends'] = []
+	a._data['arch'] = _clean_dep_ver(pkgbuild['arch'])
 	json.dump(a._data, open('/var/lib/aurbs/pkg_db/%s.json' % pkgname, 'w'), sort_keys=True, indent=4)
 
 def get_pkg(pkgname):

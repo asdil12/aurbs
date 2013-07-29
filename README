@@ -1,3 +1,5 @@
+pacman -S devtools
 
-run init.sh
+
+run init.py
 run check.py to build pkgs

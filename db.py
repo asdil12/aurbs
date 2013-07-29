@@ -23,34 +23,34 @@ def _clean_dep_ver(deps):
 	return deps_out
 
 def import_pkg(pkgname):
-	tar = tarfile.open('cache/%s.tar.gz' % pkgname)
+	tar = tarfile.open('/var/cache/aurbs/srcpkgs/%s.tar.gz' % pkgname)
 	pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkgname))
 	a = aur.get(pkgname)
 	a._data['depends'] = _clean_dep_ver(pkgbuild['depends'])
 	a._data['makedepends'] = _clean_dep_ver(pkgbuild['makedepends'])
-	json.dump(a._data, open('db/%s.json' % pkgname, 'w'), sort_keys=True, indent=4)
+	json.dump(a._data, open('/var/lib/aurbs/pkg_db/%s.json' % pkgname, 'w'), sort_keys=True, indent=4)
 
-def get(pkgname):
+def get_pkg(pkgname):
 	try:
-		r = json.load(open('db/%s.json' % pkgname, 'r'))
+		r = json.load(open('/var/lib/aurbs/pkg_db/%s.json' % pkgname, 'r'))
 		a = AurPkg(r)
 		return a
 	except IOError:
 		raise KeyError("No such pkg: '%s'" % pkgname)
 
-def get_build(pkgname):
+def get_build(pkgname, arch):
 	try:
-		b = json.load(open('build_db/%s.json' % pkgname, 'r'))
+		b = json.load(open('/var/lib/aurbs/build_db/%s/%s.json' % (arch, pkgname), 'r'))
 		b = PkgBuild(b)
 		return b
 	except IOError:
 		raise KeyError("No such build: '%s'" % pkgname)
 
-def set_build(pkgname, dependencies):
-	b = PkgBuild(get(pkgname)._data)
+def set_build(pkgname, dependencies, arch):
+	b = PkgBuild(get_pkg(pkgname)._data)
 	b._data['linkdepends'] = dependencies
 	b._data['build_time'] = int(time.time())
-	json.dump(b._data, open('build_db/%s.json' % pkgname, 'w'), sort_keys=True, indent=4)
+	json.dump(b._data, open('/var/lib/aurbs/build_db/%s/%s.json' % (arch, pkgname), 'w'), sort_keys=True, indent=4)
 
 
 def convert_provide(provide, version):

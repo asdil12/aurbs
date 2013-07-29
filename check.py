@@ -16,8 +16,6 @@ import db
 from webserver import WebServer
 
 
-chroot = '/root/chroot'
-
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
 #parser.add_argument('pkg', help='PKG to build')
@@ -38,13 +36,7 @@ else:
 log.addHandler(loghandler)
 
 
-pkg_list = set(db.pkg_list())
-pkg_checked = {}
 
-webserver = WebServer('aurstaging', 8024)
-
-subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
-remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
 
 def remote_pkgver(name):
 	return remote_pkgs[name]
@@ -63,11 +55,11 @@ def filter_dependencies(args, local=True, nofilter=False):
 	else:
 		return filter(lambda d: d not in pkg_list, deps)
 
-def publish_pkg(pkgname, version):
-	arch = 'x86_64'
+def publish_pkg(pkgname, version, arch):
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
-	repodir = os.path.join('aurstaging', arch)
+	repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 	cachedir = '/var/cache/pacman/pkg/'
+
 	for item in os.listdir(repodir):
 		print item
 		if item.endswith('pkg.tar.xz'):
@@ -79,14 +71,17 @@ def publish_pkg(pkgname, version):
 				except OSError:
 					pass
 				os.remove(os.path.join(repodir, item))
-	shutil.copyfile(os.path.join('build', pkgname, filename), os.path.join(repodir, filename))
+
 	# Prevent old pkg being cached
-	shutil.copyfile(os.path.join('build', pkgname, filename), os.path.join(cachedir, filename))
+	if os.path.isfile(os.path.join(cachedir, filename)):
+		os.remove(os.path.join(cachedir, filename))
+
+	shutil.copyfile(os.path.join(build_dir, pkgname, filename), os.path.join(repodir, filename))
 	log.debug("Adding '%s' to repo db" % item)
 	subprocess.call(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir)
 
-def make_pkg(pkgname):
-	pkg = db.get(pkgname)
+def make_pkg(pkgname, arch):
+	pkg = db.get_pkg(pkgname)
 	deps = {}
 	for dep in filter_dependencies([pkg.depends, pkg.makedepends], local=False):
 		try:
@@ -95,20 +90,20 @@ def make_pkg(pkgname):
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	for dep in filter_dependencies([pkg.depends, pkg.makedepends], local=True):
 		try:
-			dep_build = db.get_build(dep)
+			dep_build = db.get_build(dep, arch)
 			deps[dep] = {'version': dep_build.version, 'build_time': dep_build.build_time}
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
-	subprocess.call(['bsdtar', 'xvf', os.path.join('..', 'cache', '%s.tar.gz' % pkgname)], cwd='build')
+	subprocess.call(['bsdtar', 'xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir)
 	subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Sy", "--noconfirm"])
-	subprocess.call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join('build', pkgname))
-	publish_pkg(pkgname, pkg.version)
-	db.set_build(pkgname, deps)
+	subprocess.call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join(build_dir, pkgname))
+	publish_pkg(pkgname, pkg.version, arch)
+	db.set_build(pkgname, deps, arch)
 	log.warning("DONE BUILDING PKG: %s" % (pkgname))
 
-def check_pkg(pkgname):
+def check_pkg(pkgname, arch):
 	if pkgname in pkg_checked:
 		return pkg_checked[pkgname]
 
@@ -119,7 +114,7 @@ def check_pkg(pkgname):
 	# Check PKG in local db & up to date
 	try:
 		try:
-			pkg_local = db.get(pkgname)
+			pkg_local = db.get_pkg(pkgname)
 		except:
 			log.warning("AUR-PKG '%s' not found in local db --> syncing" % pkgname)
 			raise
@@ -129,11 +124,11 @@ def check_pkg(pkgname):
 	except:
 		aur.sync(pkgname)
 		db.import_pkg(pkgname)
-		pkg_local = db.get(pkgname)
+		pkg_local = db.get_pkg(pkgname)
 
 	# Check against previous build
 	try:
-		pkg_build = db.get_build(pkgname)
+		pkg_build = db.get_build(pkgname, arch)
 
 		# Check version changed
 		if version_newer(pkg_build.version, pkg_local.version):
@@ -162,19 +157,19 @@ def check_pkg(pkgname):
 	log.debug("Inquiring local pkg '%s' - ldeps: (%s)" % (pkgname, ', '.join(local_deps)))
 	for dep in local_deps:
 		# Rebuild trigger
-		if check_pkg(dep):
+		if check_pkg(dep, arch):
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))
 			do_build = True
 		# New dependency build available
 		elif not do_build:
 			dep_build_time_link = pkg_build.linkdepends[dep]['build_time']
-			dep_build_time_available = db.get_build(dep).build_time
+			dep_build_time_available = db.get_build(dep, arch).build_time
 			if dep_build_time_link < dep_build_time_available:
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True
 
 	if do_build:
-		make_pkg(pkgname)
+		make_pkg(pkgname, arch)
 		pkg_checked[pkgname] = True
 		return True
 	else:
@@ -182,8 +177,24 @@ def check_pkg(pkgname):
 		return False
 
 
+
+pkg_list = set(db.pkg_list())
+
+webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
+
 try:
+	arch = 'x86_64'
+	chroot = os.path.join('/var/lib/aurbs/chroot', arch)
+	build_dir = os.path.join('/var/cache/aurbs/build', arch)
+
+	# Create chroot, if missing
+	if not os.path.exists(os.path.join(chroot, 'root')):
+		subprocess.call(['mkarchroot', '-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch, '-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch, os.path.join(chroot, 'root'), 'base-devel'])
+
+	subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
+	remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
+	pkg_checked = {}
 	for pkg in pkg_list:
-		check_pkg(pkg)
+		check_pkg(pkg, arch)
 finally:
 	webserver.stop()

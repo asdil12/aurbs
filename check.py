@@ -181,23 +181,6 @@ def check_pkg(pkgname):
 		pkg_checked[pkgname] = False
 		return False
 
-#check_pkg(args.pkg)
-
-# create chroot:
-#  pacman -S devtools
-#  mkdir ~/chroot
-#  CHROOT=$HOME/chroot
-#  mkarchroot $CHROOT/root base-devel
-
-# at build
-# cd build ; tar xvf ../cache/pkg.tar.gz
-# sudo makechrootpkg -cu -l build -r $CHROOT
-# delete old pkg in repo
-#   repo-remove repo.db.tar.gz pkgname-*
-#   rm pkgname-*
-#   cp pkg -> repo
-#   repo-add repo.db.tar.gz pkgname-pkgvar-pkgrel.tar.xz
-
 
 try:
 	for pkg in pkg_list:

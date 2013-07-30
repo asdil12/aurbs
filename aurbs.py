@@ -93,7 +93,7 @@ def make_pkg(pkgname, arch):
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
 	subprocess.call(['bsdtar', 'xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir)
-	subprocess.call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join(build_dir, pkgname))
+	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join(build_dir, pkgname))
 	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	publish_pkg(pkgname, pkg.version, arch_publish)
 	db.set_build(pkgname, deps, arch)
@@ -179,6 +179,7 @@ webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
 try:
 	for arch in ['x86_64', 'i686']:
+		print "ARCH-FIXME: %s" % arch
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 		build_dir = os.path.join('/var/cache/aurbs/build', arch)
 		repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)

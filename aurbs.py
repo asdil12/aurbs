@@ -16,7 +16,6 @@ import db
 from webserver import WebServer
 
 
-
 parser = argparse.ArgumentParser(description='AUR Build Service')
 #parser.add_argument('pkg', help='PKG to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
@@ -34,8 +33,6 @@ else:
 	formatter = logging.Formatter('[%(asctime)s] %(levelname)+8s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 	loghandler.setFormatter(formatter)
 log.addHandler(loghandler)
-
-
 
 
 def remote_pkgver(name):
@@ -176,25 +173,29 @@ def check_pkg(pkgname, arch):
 		return False
 
 
-
 pkg_list = set(db.pkg_list())
 
 webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
 try:
-	arch = 'x86_64'
-	chroot = os.path.join('/var/lib/aurbs/chroot', arch)
-	build_dir = os.path.join('/var/cache/aurbs/build', arch)
-	repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
+	for arch in ['x86_64', 'i686']:
+		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
+		build_dir = os.path.join('/var/cache/aurbs/build', arch)
+		repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 
-	# Create chroot, if missing
-	if not os.path.exists(os.path.join(chroot, 'root')):
-		subprocess.call(['mkarchroot', '-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch, '-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch, os.path.join(chroot, 'root'), 'base-devel'])
+		# Create chroot, if missing
+		if not os.path.exists(os.path.join(chroot, 'root')):
+			subprocess.call(['mkarchroot',
+				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
+				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
+				os.path.join(chroot, 'root'),
+				'base-devel', 'ccache'
+			])
 
-	subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
-	remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
-	pkg_checked = {}
-	for pkg in pkg_list:
-		check_pkg(pkg, arch)
+		subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
+		remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
+		pkg_checked = {}
+		for pkg in pkg_list:
+			check_pkg(pkg, arch)
 finally:
 	webserver.stop()

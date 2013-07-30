@@ -42,7 +42,11 @@ def mkdir(path):
 	except OSError as e:
 		if not e.errno == 17:
 			raise
-	
+
+def chown(path, uid, gid):
+	path = os.path.join(root, path)
+	print "CHOWN: %s" % path
+	os.chown(path, uid, gid)
 
 def process_template(infile, outfile, tvars):
 	txt = open(os.path.join('templates', infile)).read()
@@ -74,6 +78,9 @@ for arch in archs:
 	process_template('pacman.conf.in', 'usr/share/aurbs/cfg/pacman.conf.%s' % arch, tplvars['pacman'][arch])
 
 	mkdir('var/cache/aurbs/build/%s' % arch)
+
+	mkdir('var/cache/aurbs/ccache/%s' % arch)
+	chown('var/cache/aurbs/ccache/%s' % arch, 99, 99)
 
 	mkdir('var/lib/aurbs/build_db/%s' % arch)
 	mkdir('var/lib/aurbs/chroot/%s' % arch)

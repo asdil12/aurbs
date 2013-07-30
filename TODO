@@ -1,1 +1,4 @@
 - build failure gracefully
+- use check_call for subprocesses
+- add cmdline arg for arch to aurbs.py
+- add cmdline arg for pkg (force rebuild) to aurbs.py

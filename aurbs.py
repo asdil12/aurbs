@@ -113,7 +113,7 @@ def make_pkg(pkgname, arch):
 		for f in fs:
 			os.chmod(os.path.join(r, f), 0o644)
 
-	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
+	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir, '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
 	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	publish_pkg(pkgname, pkg.version, arch_publish)
 	db.set_build(pkgname, deps, arch)
@@ -205,6 +205,7 @@ try:
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 		chroot_root = os.path.join(chroot, 'root')
 		build_dir = os.path.join('/var/cache/aurbs/build', arch)
+		ccache_dir = os.path.join('/var/cache/aurbs/ccache', arch)
 		repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 
 		# Create chroot, if missing

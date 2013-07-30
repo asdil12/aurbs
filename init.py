@@ -55,8 +55,12 @@ def process_template(infile, outfile, tvars):
 def dummy_repo_db(repo_path):
 	repo_path = os.path.join(root, repo_path)
 	print os.path.join(repo_path, 'aurstaging.db')
-	subprocess.call(['tar', 'czf', 'aurstaging.db.tar.gz', '--files-from', '/dev/null'], cwd=repo_path)
-	os.symlink('aurstaging.db.tar.gz', os.path.join(repo_path, 'aurstaging.db'))
+	try:
+		subprocess.call(['tar', 'czf', 'aurstaging.db.tar.gz', '--files-from', '/dev/null'], cwd=repo_path)
+		os.symlink('aurstaging.db.tar.gz', os.path.join(repo_path, 'aurstaging.db'))
+	except OSError:
+		# File exists
+		pass
 
 
 mkdir('usr/share/aurbs/cfg')

@@ -107,7 +107,7 @@ PURGE_TARGETS=(usr/{,share}/info/dir .packlist *.pod)
 #-- Source packages: specify a fixed directory where all src packages will be placed
 #SRCPKGDEST=/home/srcpackages
 #-- Packager: name/email of the person or organization building packages
-PACKAGER="AUR BS <aurbs@aurbs.local>"
+#PACKAGER="AUR BS <aurbs@aurbs.local>"
 #-- Specify a key to use for package signing
 #GPGKEY=""
 

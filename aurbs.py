@@ -96,7 +96,6 @@ def make_pkg(pkgname, arch):
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
 	subprocess.call(['bsdtar', 'xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir)
-	subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Sy", "--noconfirm"])
 	subprocess.call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join(build_dir, pkgname))
 	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	publish_pkg(pkgname, pkg.version, arch_publish)

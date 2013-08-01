@@ -58,11 +58,3 @@ def set_build(pkgname, dependencies, arch):
 	b._data['linkdepends'] = dependencies
 	b._data['build_time'] = int(time.time())
 	json.dump(b._data, open('/var/lib/aurbs/build_db/%s/%s.json' % (arch, pkgname), 'w'), sort_keys=True, indent=4)
-
-def pkg_list():
-	return [
-		'libuhd',
-		'gnuradio',
-		'gr-osmosdr',
-		'gqrx',
-	]

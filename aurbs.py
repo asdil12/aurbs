@@ -5,14 +5,13 @@ import os
 import shutil
 import subprocess
 from pkg_resources import parse_version
-
 import logging
 import logging.handlers
 import argparse
 
-
 import aur
 import db
+from config import AurBSConfig
 from webserver import WebServer
 from remotedb import RemoteDB
 
@@ -20,6 +19,7 @@ from remotedb import RemoteDB
 parser = argparse.ArgumentParser(description='AUR Build Service')
 #parser.add_argument('pkg', help='PKG to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
+parser.add_argument('-c', '--config', default='/etc/aurbs.yml', help='Set log to DEBUG')
 parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEBUG')
 args = parser.parse_args()
 
@@ -52,9 +52,9 @@ def filter_dependencies(args, local=True, nofilter=False):
 	if nofilter:
 		return deps
 	if local:
-		return [d for d in deps if d in pkg_list]
+		return [d for d in deps if d in AurBSConfig().aurpkgs]
 	else:
-		return [d for d in deps if d not in pkg_list]
+		return [d for d in deps if d not in AurBSConfig().aurpkgs]
 
 def publish_pkg(pkgname, version, arch):
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
@@ -177,12 +177,14 @@ def check_pkg(pkgname, arch):
 		return False
 
 
-pkg_list = set(db.pkg_list())
+# Initialize config
+log.debug("Reading config from '%s'" % args.config)
+AurBSConfig(args.config)
 
 webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
 try:
-	for arch in ['x86_64', 'i686']:
+	for arch in AurBSConfig().architectures:
 		print("ARCH-FIXME: %s" % arch)
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 		chroot_root = os.path.join(chroot, 'root')
@@ -201,7 +203,7 @@ try:
 		subprocess.call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
 		remote_db = RemoteDB(chroot_root)
 		pkg_checked = {}
-		for pkg in pkg_list:
+		for pkg in AurBSConfig().aurpkgs:
 			check_pkg(pkg, arch)
 		#TODO: Publish repo
 finally:

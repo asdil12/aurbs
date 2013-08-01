@@ -1,0 +1,9 @@
+architectures:
+	- x86_64
+	- i686
+
+aurpkgs:
+#	- libuhd
+#	- gnuradio
+#	- gr-osmosdr
+#	- gqrx

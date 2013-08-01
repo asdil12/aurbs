@@ -34,8 +34,11 @@ if len(sys.argv) > 1:
 else:
 	root = '/'
 
+def rp(path):
+	return os.path.join(root, path)
+
 def mkdir(path):
-	path = os.path.join(root, path)
+	path = rp(path)
 	print(path)
 	try:
 		os.makedirs(path)
@@ -44,20 +47,21 @@ def mkdir(path):
 			raise
 
 def chown(path, uid, gid):
-	path = os.path.join(root, path)
+	path = rp(path)
 	print("CHOWN: %s" % path)
 	os.chown(path, uid, gid)
 
-def process_template(infile, outfile, tvars):
+def process_template(infile, outfile, tvars, skip_existing=False):
 	txt = open(os.path.join('templates', infile)).read()
 	for key, value in tvars.items():
 		txt = txt.replace('%%%s%%' % key, value)
-	outfile = os.path.join(root, outfile)
-	print(outfile)
-	open(outfile, 'w').write(txt)
+	outfile = rp(outfile)
+	if not skip_existing or not os.path.exists(outfile):
+		print(outfile)
+		open(outfile, 'w').write(txt)
 
 def dummy_repo_db(repo_path):
-	repo_path = os.path.join(root, repo_path)
+	repo_path = rp(repo_path)
 	print(os.path.join(repo_path, 'aurstaging.db'))
 	try:
 		if not os.path.exists(os.path.join(repo_path, 'aurstaging.db.tar.gz')):
@@ -68,6 +72,8 @@ def dummy_repo_db(repo_path):
 		# File exists
 		pass
 
+
+process_template('aurbs.yml.in', 'etc/aurbs.yml', {}, True)
 
 mkdir('usr/share/aurbs/cfg')
 mkdir('var/cache/aurbs/srcpkgs')

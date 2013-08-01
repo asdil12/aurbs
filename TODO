@@ -1,4 +1,6 @@
 - build failure gracefully
-- use check_call for subprocesses
+	- use check_call for subprocesses
+	- block build on missing dependencies or build-fail
+		- hold builds, depending on that
 - add cmdline arg for arch to aurbs.py
 - add cmdline arg for pkg (force rebuild) to aurbs.py

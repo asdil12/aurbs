@@ -96,8 +96,24 @@ def make_pkg(pkgname, arch):
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
-	subprocess.call(['bsdtar', 'xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir)
-	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot, '--', '--noprogressbar'], cwd=os.path.join(build_dir, pkgname))
+	build_dir_pkg = os.path.join(build_dir, pkgname)
+
+	# Create the directory to prevent pkgs exploiting other pkgs (tarbombs)
+	try:
+		os.mkdir(build_dir_pkg)
+	except FileExistsError:
+		pass
+	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir_pkg)
+
+	# Hack to fix bad pkgs having 600/700 dependencies
+	os.chmod(build_dir_pkg, 0o755)
+	for r, ds, fs in os.walk(build_dir_pkg):
+		for d in ds:
+			os.chmod(os.path.join(r, d), 0o755)
+		for f in fs:
+			os.chmod(os.path.join(r, f), 0o644)
+
+	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
 	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	publish_pkg(pkgname, pkg.version, arch_publish)
 	db.set_build(pkgname, deps, arch)

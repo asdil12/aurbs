@@ -97,7 +97,7 @@ def make_pkg(pkgname, arch):
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
 	subprocess.call(['bsdtar', 'xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir)
-	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot], cwd=os.path.join(build_dir, pkgname))
+	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-r', chroot, '--', '--noprogressbar'], cwd=os.path.join(build_dir, pkgname))
 	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	publish_pkg(pkgname, pkg.version, arch_publish)
 	db.set_build(pkgname, deps, arch)
@@ -198,7 +198,7 @@ try:
 				'base-devel', 'ccache'
 			])
 
-		subprocess.call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm"])
+		subprocess.call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
 		remote_db = RemoteDB(chroot_root)
 		pkg_checked = {}
 		for pkg in pkg_list:

@@ -189,7 +189,7 @@ def parseFile(fileh):
 	for line in fileh:
 		line = line[:-1]
 		if not line: continue
-		lines[-1] += line
+		lines[-1] += line.decode("UTF-8")
 		if line[-1] != "\\":
 		   lines.append("")
 

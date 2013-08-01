@@ -37,7 +37,7 @@ def get(pkgname):
 def sync(pkgname):
 	a = get(pkgname)
 	u = urllib.request.urlopen(a.srcpkg)
-	f = open("/var/cache/aurbs/srcpkgs/%s.tar.gz" % pkgname, 'w')
+	f = open("/var/cache/aurbs/srcpkgs/%s.tar.gz" % pkgname, 'wb')
 	f.write(u.read())
 	f.close()
 

@@ -185,7 +185,7 @@ webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
 try:
 	for arch in AurBSConfig().architectures:
-		print("ARCH-FIXME: %s" % arch)
+		log.info("Building for architecture %s" % arch)
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 		chroot_root = os.path.join(chroot, 'root')
 		build_dir = os.path.join('/var/cache/aurbs/build', arch)

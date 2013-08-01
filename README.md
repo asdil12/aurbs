@@ -1,4 +1,4 @@
-- pacman -S devtools python2-distribute python2-simplejson
+- pacman -S devtools python-distribute python-simplejson
 - set PACKAGER in `/etc/makepkg.conf`
 - run `init.py` to create directory structure
 - change `PACKAGER` to match your name/email in

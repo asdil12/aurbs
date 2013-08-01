@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 
 import os
 import subprocess
@@ -36,7 +36,7 @@ else:
 
 def mkdir(path):
 	path = os.path.join(root, path)
-	print path
+	print(path)
 	try:
 		os.makedirs(path)
 	except OSError as e:
@@ -49,12 +49,12 @@ def process_template(infile, outfile, tvars):
 	for key, value in tvars.items():
 		txt = txt.replace('%%%s%%' % key, value)
 	outfile = os.path.join(root, outfile)
-	print outfile
+	print(outfile)
 	open(outfile, 'w').write(txt)
 
 def dummy_repo_db(repo_path):
 	repo_path = os.path.join(root, repo_path)
-	print os.path.join(repo_path, 'aurstaging.db')
+	print(os.path.join(repo_path, 'aurstaging.db'))
 	try:
 		if not os.path.exists(os.path.join(repo_path, 'aurstaging.db.tar.gz')):
 			subprocess.call(['tar', 'czf', 'aurstaging.db.tar.gz', '--files-from', '/dev/null'], cwd=repo_path)

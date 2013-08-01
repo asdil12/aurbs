@@ -1,32 +1,32 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 import simplejson as json
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 from optparse import OptionParser
 
 from model import *
 
 target_url = "http://aur.archlinux.org/rpc.php"
 
-class AppURLopener(urllib.FancyURLopener):
+class AppURLopener(urllib.request.FancyURLopener):
     version = 'AURJSON-Example/1.0 python'
 
-urllib._urlopener = AppURLopener()
+urllib.request._urlopener = AppURLopener()
 
 def search(args):
-    params = urllib.urlencode({'type':'search', 'arg':args})
-    response = urllib.urlopen("%s?%s" % (target_url,params)).read()
+    params = urllib.parse.urlencode({'type':'search', 'arg':args})
+    response = urllib.request.urlopen("%s?%s" % (target_url,params)).read()
     print_results(json.loads(response))
 
 def info(args):
-    params = urllib.urlencode({'type':'info', 'arg':args})
-    response = urllib.urlopen("%s?%s" % (target_url,params)).read()
+    params = urllib.parse.urlencode({'type':'info', 'arg':args})
+    response = urllib.request.urlopen("%s?%s" % (target_url,params)).read()
     print_results(json.loads(response))
 
 def get(pkgname):
-    params = urllib.urlencode({'type':'info', 'arg':pkgname})
-    response = urllib.urlopen("%s?%s" % (target_url,params)).read()
+    params = urllib.parse.urlencode({'type':'info', 'arg':pkgname})
+    response = urllib.request.urlopen("%s?%s" % (target_url,params)).read()
     result = json.loads(response)
     assert result['resultcount'] == 1 and result['type'] == 'info'
     r = result['results']
@@ -36,22 +36,22 @@ def get(pkgname):
 
 def sync(pkgname):
 	a = get(pkgname)
-	u = urllib2.urlopen(a.srcpkg)
+	u = urllib.request.urlopen(a.srcpkg)
 	f = open("/var/cache/aurbs/srcpkgs/%s.tar.gz" % pkgname, 'w')
 	f.write(u.read())
 	f.close()
 
 def print_results(data):
     if data['type'] == 'error':
-        print 'Error: %s' % data['results']
+        print('Error: %s' % data['results'])
         return
     if not isinstance(data['results'], list):
         data['results'] = [data['results'],]
-    print 'Packages:'
+    print('Packages:')
     for pkg in data['results']:
         for name in pkg:
-            print '  %s: %s' % (name, pkg[name])
-        print ''
+            print('  %s: %s' % (name, pkg[name]))
+        print('')
 
 def main():
     usage = "usage: %prog [options] arg"

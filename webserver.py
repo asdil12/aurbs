@@ -1,10 +1,10 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 
 import os
-import SimpleHTTPServer
-import SocketServer
+import http.server
+import socketserver
 import posixpath
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import threading
 import logging
 
@@ -23,16 +23,16 @@ class WebServer(object):
 		self.subdir = subdir
 		self.port = port
 
-		class Server(SocketServer.TCPServer):
+		class Server(socketserver.TCPServer):
 			allow_reuse_address = True
 
-		class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+		class Handler(http.server.SimpleHTTPRequestHandler):
 			def translate_path(self, path):
 				path = path.split('?',1)[0]
 				path = path.split('#',1)[0]
-				path = posixpath.normpath(urllib.unquote(path))
+				path = posixpath.normpath(urllib.parse.unquote(path))
 				words = path.split('/')
-				words = filter(None, words)
+				words = [w for w in words if w]
 				path = os.path.join(os.getcwd(), subdir)
 				for word in words:
 					drive, word = os.path.splitdrive(word)

@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 
 import sys
 import os
@@ -48,16 +48,16 @@ def filter_dependencies(args, local=True, nofilter=False):
 	if nofilter:
 		return deps
 	if local:
-		return filter(lambda d: d in pkg_list, deps)
+		return [d for d in deps if d in pkg_list]
 	else:
-		return filter(lambda d: d not in pkg_list, deps)
+		return [d for d in deps if d not in pkg_list]
 
 def publish_pkg(pkgname, version, arch):
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
 	cachedir = '/var/cache/pacman/pkg/'
 
 	for item in os.listdir(repodir):
-		print item
+		print(item)
 		if item.endswith('pkg.tar.xz'):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			if ipkgname == pkgname:
@@ -145,7 +145,7 @@ def check_pkg(pkgname, arch):
 					log.error("Check: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	except Exception as e:
 		log.warning("No build for AUR-PKG '%s' --> building" % pkgname)
-		print "EXCEPTION-FIXME: %s" % e
+		print("EXCEPTION-FIXME: %s" % e)
 		do_build = True
 
 	# Check for local dependencs updates
@@ -179,7 +179,7 @@ webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
 try:
 	for arch in ['x86_64', 'i686']:
-		print "ARCH-FIXME: %s" % arch
+		print("ARCH-FIXME: %s" % arch)
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 		build_dir = os.path.join('/var/cache/aurbs/build', arch)
 		repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)

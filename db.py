@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/env python
 
 import simplejson as json
 import tarfile
@@ -77,7 +77,7 @@ def remote_pkgs(chroot='/'):
 	log.info("Reading pacman sync repos...")
 	pkgs = {}
 	pkg_last = None
-	for sdb in filter(lambda d: d.endswith('.db'), os.listdir(os.path.join(chroot, 'var/lib/pacman/sync/'))):
+	for sdb in [d for d in os.listdir(os.path.join(chroot, 'var/lib/pacman/sync/')) if d.endswith('.db')]:
 		tar = tarfile.open(os.path.join(chroot, 'var/lib/pacman/sync/', sdb))
 		for m in tar.getmembers():
 			if m.isdir():
@@ -85,7 +85,7 @@ def remote_pkgs(chroot='/'):
 				pkgs[pkgname] = pkgver + "-" + pkgrel
 				pkg_last = pkgname
 			elif m.isfile() and m.name.endswith('depends'):
-				depf = [e.split('\n') for e in tar.extractfile(m.name).read().split('\n\n')]
+				depf = [e.split('\n') for e in tar.extractfile(m.name).read().decode('UTF-8').split('\n\n')]
 				for group in depf:
 					if group.pop(0) == '%PROVIDES%':
 						for provide in group:

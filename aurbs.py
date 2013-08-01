@@ -56,28 +56,35 @@ def filter_dependencies(args, local=True, nofilter=False):
 	else:
 		return [d for d in deps if d not in AurBSConfig().aurpkgs]
 
+def find_pkg_files(pkgname, directory):
+	respkgs = []
+	for item in os.listdir(directory):
+		if item.endswith('pkg.tar.xz'):
+			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
+			if ipkgname == pkgname:
+				respkgs.append(item)
+	return respkgs
+
 def publish_pkg(pkgname, version, arch):
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
 	cachedir = '/var/cache/pacman/pkg/'
 
-	for item in os.listdir(repodir):
-		print(item)
-		if item.endswith('pkg.tar.xz'):
-			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-			if ipkgname == pkgname:
-				log.debug("Removing '%s' from repo db" % ipkgname)
-				try:
-					subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir)
-				except OSError:
-					pass
-				os.remove(os.path.join(repodir, item))
+	# Delete old file from repo and repodb
+	for item in find_pkg_files(pkgname, repodir):
+		[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
+		log.debug("Removing '%s' from repo db" % ipkgname)
+		try:
+			subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir)
+		except OSError:
+			pass
+		os.remove(os.path.join(repodir, item))
 
 	# Prevent old pkg being cached
 	if os.path.isfile(os.path.join(cachedir, filename)):
 		os.remove(os.path.join(cachedir, filename))
 
 	shutil.copyfile(os.path.join(build_dir, pkgname, filename), os.path.join(repodir, filename))
-	log.debug("Adding '%s' to repo db" % item)
+	log.debug("Adding '%s' to repo db" % filename)
 	subprocess.call(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir)
 
 def make_pkg(pkgname, arch):
@@ -102,7 +109,8 @@ def make_pkg(pkgname, arch):
 	try:
 		os.mkdir(build_dir_pkg)
 	except FileExistsError:
-		pass
+		for filename in find_pkg_files(pkgname, build_dir_pkg):
+			os.remove(os.path.join(build_dir_pkg, filename))
 	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir_pkg)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
@@ -114,9 +122,19 @@ def make_pkg(pkgname, arch):
 			os.chmod(os.path.join(r, f), 0o644)
 
 	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir, '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
+
 	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
-	publish_pkg(pkgname, pkg.version, arch_publish)
+
+	for item in find_pkg_files(pkgname, build_dir_pkg):
+		[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
+		log.info("Publishing pkg '%s'" % item)
+		ver_publish = '%s-%s' % (ipkgver, ipkgrel)
+		publish_pkg(pkgname, ver_publish, arch_publish)
+		# Cleanup built pkg
+		os.remove(os.path.join(build_dir_pkg, item))
+
 	db.set_build(pkgname, deps, arch)
+
 	log.warning("DONE BUILDING PKG: %s" % (pkgname))
 
 def check_pkg(pkgname, arch):

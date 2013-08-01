@@ -2,5 +2,3 @@
 - use check_call for subprocesses
 - add cmdline arg for arch to aurbs.py
 - add cmdline arg for pkg (force rebuild) to aurbs.py
-- use http://projects.archlinux.org/users/remy/pyalpm.git/ as syncdb backend
-  - requires move to python3 or backporting the lib

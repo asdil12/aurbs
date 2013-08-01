@@ -203,5 +203,6 @@ try:
 		pkg_checked = {}
 		for pkg in pkg_list:
 			check_pkg(pkg, arch)
+		#TODO: Publish repo
 finally:
 	webserver.stop()

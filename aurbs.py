@@ -195,7 +195,7 @@ try:
 				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
 				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
 				chroot_root,
-				'base-devel', 'ccache'
+				'base-devel', 'ccache', 'git'
 			])
 
 		subprocess.call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm", "--noprogressbar"])

@@ -14,13 +14,15 @@ import db
 from config import AurBSConfig
 from webserver import WebServer
 from remotedb import RemoteDB
+from model import Dependency
 
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
-#parser.add_argument('pkg', help='PKG to build')
+parser.add_argument('pkg', nargs='?', help='Package to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
-parser.add_argument('-c', '--config', default='/etc/aurbs.yml', help='Set log to DEBUG')
+parser.add_argument('-c', '--config', default='/etc/aurbs.yml', help='Set alternative config file')
 parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEBUG')
+parser.add_argument('-a', '--arch', help='Set build architecture')
 args = parser.parse_args()
 
 
@@ -136,12 +138,16 @@ def make_pkg(pkgname, arch):
 	db.set_build(pkgname, deps, arch)
 
 	log.warning("DONE BUILDING PKG: %s" % (pkgname))
+	#FIXME: return correct status (currently excepting for debugging)
+	return True
 
 def check_pkg(pkgname, arch):
 	if pkgname in pkg_checked:
 		return pkg_checked[pkgname]
 
 	do_build = False
+	build_blocked = False
+	build_available = True
 
 	pkg_aur = aur.get(pkgname)
 
@@ -180,20 +186,25 @@ def check_pkg(pkgname, arch):
 						do_build = True
 						break
 				except KeyError:
-					log.error("Check: Dependency '%s' for '%s' not found!" % (dep, pkgname))
+					log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
+					build_blocked = True
 	except Exception as e:
 		log.warning("No build for AUR-PKG '%s' --> building" % pkgname)
-		print("EXCEPTION-FIXME: %s" % e)
+		build_available = False
 		do_build = True
+		print("EXCEPTION-FIXME: %s" % e)
 
 	# Check for local dependencs updates
 	local_deps = filter_dependencies([pkg_local.depends, pkg_local.makedepends], local=True)
 	log.debug("Inquiring local pkg '%s' - ldeps: (%s)" % (pkgname, ', '.join(local_deps)))
 	for dep in local_deps:
 		# Rebuild trigger
-		if check_pkg(dep, arch):
+		dep_res = check_pkg(dep, arch)
+		if dep_res == Dependency.rebuilt:
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))
 			do_build = True
+		elif dep_res == Dependency.blocked:
+			build_blocked = True
 		# New dependency build available
 		elif not do_build:
 			dep_build_time_link = pkg_build.linkdepends[dep]['build_time']
@@ -202,13 +213,17 @@ def check_pkg(pkgname, arch):
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True
 
-	if do_build:
-		make_pkg(pkgname, arch)
-		pkg_checked[pkgname] = True
-		return True
+	if not build_blocked:
+		if do_build:
+			if make_pkg(pkgname, arch):
+				pkg_checked[pkgname] = Dependency.rebuilt
+			elif not build_available:
+				pkg_checked[pkgname] = Dependency.blocked
+		else:
+			pkg_checked[pkgname] = Dependency.ok
 	else:
-		pkg_checked[pkgname] = False
-		return False
+		pkg_checked[pkgname] = Dependency.ok if build_available else Dependency.blocked
+	return pkg_checked[pkgname]
 
 
 # Initialize config
@@ -218,7 +233,7 @@ AurBSConfig(args.config)
 webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
 try:
-	for arch in AurBSConfig().architectures:
+	for arch in AurBSConfig().architectures if not args.arch else [args.arch]:
 		log.info("Building for architecture %s" % arch)
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
 		chroot_root = os.path.join(chroot, 'root')
@@ -228,18 +243,19 @@ try:
 
 		# Create chroot, if missing
 		if not os.path.exists(chroot_root):
-			subprocess.call(['mkarchroot',
+			subprocess.check_call(['mkarchroot',
 				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
 				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
 				chroot_root,
 				'base-devel', 'ccache', 'git'
 			])
 
-		subprocess.call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
+		subprocess.check_call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
 		remote_db = RemoteDB(chroot_root)
 		pkg_checked = {}
-		for pkg in AurBSConfig().aurpkgs:
+		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
 			check_pkg(pkg, arch)
+			#TODO: write status page
 		#TODO: Publish repo
 finally:
 	webserver.stop()

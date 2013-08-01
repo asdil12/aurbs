@@ -45,3 +45,13 @@ class Singleton(object):
 		if self.instance is None:
 			self.instance = self.cls(*args, **kwargs)
 		return self.instance
+
+class Dependency(object):
+	# old build is available
+	ok = 0
+
+	# new build is available
+	rebuilt = 1
+
+	# no build is available and something went wrong
+	blocked = 2

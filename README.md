@@ -1,7 +1,5 @@
 - pacman -S devtools python-distribute python-simplejson python-yaml pyalpm
-- set PACKAGER in `/etc/makepkg.conf`
 - run `init.py` to create directory structure
-- change `PACKAGER` to match your name/email in
-	- `/usr/share/aurbs/cfg/makepkg.conf.i686`
-	- `/usr/share/aurbs/cfg/makepkg.conf.x86_64`
+- set PACKAGER in `/etc/makepkg.conf`
+- modify `/etc/aurbs.yml` to define you pkgs and archs
 - run `aurbs.py` to build pkgs

@@ -45,7 +45,7 @@ def mkdir(path):
 
 def chown(path, uid, gid):
 	path = os.path.join(root, path)
-	print "CHOWN: %s" % path
+	print("CHOWN: %s" % path)
 	os.chown(path, uid, gid)
 
 def process_template(infile, outfile, tvars):

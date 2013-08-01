@@ -72,29 +72,6 @@ def convert_provide(provide, version):
 	else:
 		return (provide, version)
 
-
-def remote_pkgs(chroot='/'):
-	log.info("Reading pacman sync repos...")
-	pkgs = {}
-	pkg_last = None
-	for sdb in [d for d in os.listdir(os.path.join(chroot, 'var/lib/pacman/sync/')) if d.endswith('.db')]:
-		tar = tarfile.open(os.path.join(chroot, 'var/lib/pacman/sync/', sdb))
-		for m in tar.getmembers():
-			if m.isdir():
-				[pkgname, pkgver, pkgrel] = m.name.rsplit("-", 2)
-				pkgs[pkgname] = pkgver + "-" + pkgrel
-				pkg_last = pkgname
-			elif m.isfile() and m.name.endswith('depends'):
-				depf = [e.split('\n') for e in tar.extractfile(m.name).read().decode('UTF-8').split('\n\n')]
-				for group in depf:
-					if group.pop(0) == '%PROVIDES%':
-						for provide in group:
-							[pkgname, pkgvr] = convert_provide(provide, pkgs[pkg_last])
-							pkgs[pkgname] = pkgvr
-	log.info("Reading pacman sync repos... DONE")
-	return pkgs
-				
-	
 def pkg_list():
 	return [
 		'libuhd',

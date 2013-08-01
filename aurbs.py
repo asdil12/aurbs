@@ -14,6 +14,7 @@ import argparse
 import aur
 import db
 from webserver import WebServer
+from remotedb import RemoteDB
 
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
@@ -36,7 +37,10 @@ log.addHandler(loghandler)
 
 
 def remote_pkgver(name):
-	return remote_pkgs[name]
+	try:
+		return remote_db.get_pkg(name).version
+	except AttributeError:
+		raise KeyError("No provider found for remote pkg '%s'" % name)
 
 def version_newer(old, new):
 	return parse_version(new) > parse_version(old)
@@ -181,20 +185,21 @@ try:
 	for arch in ['x86_64', 'i686']:
 		print("ARCH-FIXME: %s" % arch)
 		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
+		chroot_root = os.path.join(chroot, 'root')
 		build_dir = os.path.join('/var/cache/aurbs/build', arch)
 		repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 
 		# Create chroot, if missing
-		if not os.path.exists(os.path.join(chroot, 'root')):
+		if not os.path.exists(chroot_root):
 			subprocess.call(['mkarchroot',
 				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
 				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
-				os.path.join(chroot, 'root'),
+				chroot_root,
 				'base-devel', 'ccache'
 			])
 
-		subprocess.call(["arch-nspawn", os.path.join(chroot, 'root'), "pacman", "-Syu", "--noconfirm"])
-		remote_pkgs = db.remote_pkgs(os.path.join(chroot, 'root'))
+		subprocess.call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm"])
+		remote_db = RemoteDB(chroot_root)
 		pkg_checked = {}
 		for pkg in pkg_list:
 			check_pkg(pkg, arch)

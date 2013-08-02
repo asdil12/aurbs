@@ -143,6 +143,7 @@ def make_pkg(pkgname, arch):
 	except Exception as e:
 		log.error("Failed building '%s'" % pkgname)
 		log.warning("Error: %s" % e)
+		#TODO provide log somehow
 		if args.strict:
 			raise FatalError('Build Failure')
 		return False
@@ -155,6 +156,7 @@ def check_pkg(pkgname, arch, do_build=False):
 	build_available = True
 
 	#FIXME: also handle Exceptions via FatalError
+	# and see if args.strict is set
 	pkg_aur = aur.get(pkgname)
 
 	# Check PKG in local db & up to date

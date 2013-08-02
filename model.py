@@ -55,3 +55,6 @@ class Dependency(object):
 
 	# no build is available and something went wrong
 	blocked = 2
+
+class FatalError(Exception):
+	pass

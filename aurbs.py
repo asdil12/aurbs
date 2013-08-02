@@ -14,7 +14,7 @@ import db
 from config import AurBSConfig
 from webserver import WebServer
 from remotedb import RemoteDB
-from model import Dependency
+from model import Dependency, FatalError
 
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
@@ -22,6 +22,7 @@ parser.add_argument('pkg', nargs='?', help='Package to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
 parser.add_argument('-c', '--config', default='/etc/aurbs.yml', help='Set alternative config file')
 parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEBUG')
+parser.add_argument('-s', '--strict', action='store_true', help='Exit on build failures')
 parser.add_argument('-f', '--force', action='store_true', help='Force rebuild')
 parser.add_argument('-F', '--forceall', action='store_true', help='Force rebuild also dependencies')
 parser.add_argument('-a', '--arch', help='Set build architecture')
@@ -126,23 +127,25 @@ def make_pkg(pkgname, arch):
 		for f in fs:
 			os.chmod(os.path.join(r, f), 0o644)
 
-	subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir, '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
-
-	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
-
-	for item in find_pkg_files(pkgname, build_dir_pkg):
-		[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-		log.info("Publishing pkg '%s'" % item)
-		ver_publish = '%s-%s' % (ipkgver, ipkgrel)
-		publish_pkg(pkgname, ver_publish, arch_publish)
-		# Cleanup built pkg
-		os.remove(os.path.join(build_dir_pkg, item))
-
-	db.set_build(pkgname, deps, arch)
-
-	log.warning("DONE BUILDING PKG: %s" % (pkgname))
-	#FIXME: return correct status (currently excepting for debugging)
-	return True
+	try:
+		subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir, '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
+		arch_publish = 'any' if pkg.arch[0] == 'any' else arch
+		for item in find_pkg_files(pkgname, build_dir_pkg):
+			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
+			log.info("Publishing pkg '%s'" % item)
+			ver_publish = '%s-%s' % (ipkgver, ipkgrel)
+			publish_pkg(pkgname, ver_publish, arch_publish)
+			# Cleanup built pkg
+			os.remove(os.path.join(build_dir_pkg, item))
+		db.set_build(pkgname, deps, arch)
+		log.warning("Done building '%s'" % pkgname)
+		return True
+	except Exception as e:
+		log.error("Failed building '%s'" % pkgname)
+		log.warning("Error: %s" % e)
+		if args.strict:
+			raise FatalError('Build Failure')
+		return False
 
 def check_pkg(pkgname, arch, do_build=False):
 	if pkgname in pkg_checked:
@@ -151,6 +154,7 @@ def check_pkg(pkgname, arch, do_build=False):
 	build_blocked = False
 	build_available = True
 
+	#FIXME: also handle Exceptions via FatalError
 	pkg_aur = aur.get(pkgname)
 
 	# Check PKG in local db & up to date
@@ -263,5 +267,7 @@ try:
 			check_pkg(pkg, arch, args.force or args.forceall)
 			#TODO: write status page
 		#TODO: Publish repo
+except FatalError as e:
+	log.error("Fatal Error: %s" % e)
 finally:
 	webserver.stop()

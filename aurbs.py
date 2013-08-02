@@ -22,6 +22,8 @@ parser.add_argument('pkg', nargs='?', help='Package to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
 parser.add_argument('-c', '--config', default='/etc/aurbs.yml', help='Set alternative config file')
 parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEBUG')
+parser.add_argument('-f', '--force', action='store_true', help='Force rebuild')
+parser.add_argument('-F', '--forceall', action='store_true', help='Force rebuild also dependencies')
 parser.add_argument('-a', '--arch', help='Set build architecture')
 args = parser.parse_args()
 
@@ -141,11 +143,10 @@ def make_pkg(pkgname, arch):
 	#FIXME: return correct status (currently excepting for debugging)
 	return True
 
-def check_pkg(pkgname, arch):
+def check_pkg(pkgname, arch, do_build=False):
 	if pkgname in pkg_checked:
 		return pkg_checked[pkgname]
 
-	do_build = False
 	build_blocked = False
 	build_available = True
 
@@ -199,7 +200,7 @@ def check_pkg(pkgname, arch):
 	log.debug("Inquiring local pkg '%s' - ldeps: (%s)" % (pkgname, ', '.join(local_deps)))
 	for dep in local_deps:
 		# Rebuild trigger
-		dep_res = check_pkg(dep, arch)
+		dep_res = check_pkg(dep, arch, args.forceall)
 		if dep_res == Dependency.rebuilt:
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))
 			do_build = True
@@ -254,7 +255,7 @@ try:
 		remote_db = RemoteDB(chroot_root)
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
-			check_pkg(pkg, arch)
+			check_pkg(pkg, arch, args.force or args.forceall)
 			#TODO: write status page
 		#TODO: Publish repo
 finally:

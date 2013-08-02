@@ -193,13 +193,17 @@ def parseFile(fileh):
 	lines = [""]
 
 	for line in fileh:
-		line = line[:-1]
-		if not line: continue
 		try:
-			lines[-1] += line.decode("UTF-8")
+			line = line.decode("UTF-8")
 		except:
-			lines[-1] += line
-		if line[-1] != "\\":
+			line = line
+		# remove newlines
+		line = line.rstrip("\r\n")
+		if not line: continue
+		lines[-1] += line
+		if line[-1] == "\\":
+			lines[-1] = lines[-1].rstrip("\\")
+		else:
 		   lines.append("")
 
 	symbols = {}

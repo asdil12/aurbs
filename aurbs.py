@@ -108,6 +108,7 @@ def make_pkg(pkgname, arch):
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
 	build_dir_pkg = os.path.join(build_dir, pkgname)
+	src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
 
 	# Create the directory to prevent pkgs exploiting other pkgs (tarbombs)
 	try:
@@ -115,7 +116,7 @@ def make_pkg(pkgname, arch):
 	except FileExistsError:
 		for filename in find_pkg_files(pkgname, build_dir_pkg):
 			os.remove(os.path.join(build_dir_pkg, filename))
-	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)], cwd=build_dir_pkg)
+	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
 	os.chmod(build_dir_pkg, 0o755)
@@ -156,6 +157,10 @@ def check_pkg(pkgname, arch, do_build=False):
 	try:
 		try:
 			pkg_local = db.get_pkg(pkgname)
+			src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
+			if not os.path.exists(src_pkg):
+				log.warning("AUR-PKG '%s' src-pkg not found --> syncing" % pkgname)
+				raise
 		except:
 			log.warning("AUR-PKG '%s' not found in local db --> syncing" % pkgname)
 			raise

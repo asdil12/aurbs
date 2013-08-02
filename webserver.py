@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import sys
 import http.server
 import socketserver
 import posixpath
@@ -25,6 +26,10 @@ class WebServer(object):
 
 		class Server(socketserver.TCPServer):
 			allow_reuse_address = True
+			def handle_error(self, request, client_address):
+				cas = '(%s:%i)' % client_address
+				type_, value_, traceback_ = sys.exc_info()
+				log.warning('Webserver error handling request from: %s: %s' % (client_address, value_.__repr__()))
 
 		class Handler(http.server.SimpleHTTPRequestHandler):
 			def translate_path(self, path):
@@ -47,10 +52,10 @@ class WebServer(object):
 		self.t = threading.Thread(target=self.httpd.serve_forever)
 		self.t.daemon = True
 		self.t.start()
-		log.info("Start serving '%s' at port %i" % (self.subdir, self.port))
+		log.debug("Start serving '%s' at port %i" % (self.subdir, self.port))
 
 	def stop(self):
-		log.info("Stop serving '%s' at port %i" % (self.subdir, self.port))
+		log.debug("Stop serving '%s' at port %i" % (self.subdir, self.port))
 		self.httpd.shutdown()
 		self.httpd.server_close()
 		self.t.join()

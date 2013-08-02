@@ -15,6 +15,7 @@ import re
 
 reName = re.compile(r"([\w_][\w\d_]*)")
 reAssignment = re.compile(r"([\w_][\w\d_]*)=")
+reVar = re.compile(r"\$([a-zA-Z0-0_]+)")
 
 def bashGlobToRegex(glob):
 	# Reference: bash(1) "Pathname Expansion"
@@ -143,7 +144,12 @@ def expandParams(symbols, text):
 						0 if suball else 1)
 				else:
 					# 'normal' expansion
-					res += symbols.get(name.group(1), "")
+					symb = symbols.get(name.group(1), "")
+					if isinstance(symb, list):
+						# workaround packagers not knowing the
+						# difference between string and array
+						symb = ' '.join(symb)
+					res += symb
 			else:
 				name = reName.match(text, ptr)
 				res += symbols.get(name.group(1), "")
@@ -189,7 +195,10 @@ def parseFile(fileh):
 	for line in fileh:
 		line = line[:-1]
 		if not line: continue
-		lines[-1] += line.decode("UTF-8")
+		try:
+			lines[-1] += line.decode("UTF-8")
+		except:
+			lines[-1] += line
 		if line[-1] != "\\":
 		   lines.append("")
 
@@ -197,6 +206,7 @@ def parseFile(fileh):
 	i = 0
 	while i < len(lines):
 		line = lines[i]
+		line = reVar.sub("${\g<1>}", line)
 		i += 1
 
 		assignment = reAssignment.match(line)

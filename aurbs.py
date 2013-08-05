@@ -15,6 +15,7 @@ from config import AurBSConfig
 from webserver import WebServer
 from remotedb import RemoteDB
 from model import Dependency, FatalError
+from static import *
 
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
@@ -70,27 +71,33 @@ def find_pkg_files(pkgname, directory):
 				respkgs.append(item)
 	return respkgs
 
-def publish_pkg(pkgname, version, arch):
-	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch)
-	cachedir = '/var/cache/pacman/pkg/'
+def publish_pkg(pkgname, arch, version, arch_publish):
+	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch_publish)
+	repo_archs = AurBSConfig().architectures if arch_publish == 'any' else [arch]
 
 	# Delete old file from repo and repodb
-	for item in find_pkg_files(pkgname, repodir):
-		[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-		log.debug("Removing '%s' from repo db" % ipkgname)
-		try:
-			subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir)
-		except OSError:
-			pass
-		os.remove(os.path.join(repodir, item))
+	for repo_arch in repo_archs:
+		for item in find_pkg_files(pkgname, repodir(repo_arch)):
+			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
+			log.debug("Removing '%s' from %s repo db" % (ipkgname, repo_arch))
+			try:
+				subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
+			except OSError:
+				pass
+			os.remove(os.path.join(repodir(repo_arch), item))
+	for item in find_pkg_files(pkgname, repodir('any')):
+		os.remove(os.path.join(repodir('any'), item))
 
 	# Prevent old pkg being cached
 	if os.path.isfile(os.path.join(cachedir, filename)):
 		os.remove(os.path.join(cachedir, filename))
 
-	shutil.copyfile(os.path.join(build_dir, pkgname, filename), os.path.join(repodir, filename))
-	log.debug("Adding '%s' to repo db" % filename)
-	subprocess.call(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir)
+	shutil.copyfile(os.path.join(build_dir(arch), pkgname, filename), os.path.join(repodir(arch_publish), filename))
+	for repo_arch in repo_archs:
+		if arch_publish == 'any':
+			os.symlink(os.path.join('..', arch_publish, filename), os.path.join(repodir(repo_arch), filename))
+		log.debug("Adding '%s' to %s repo db" % (filename, repo_arch))
+		subprocess.check_call(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir(repo_arch))
 
 def make_pkg(pkgname, arch):
 	pkg = db.get_pkg(pkgname)
@@ -108,7 +115,7 @@ def make_pkg(pkgname, arch):
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
 
-	build_dir_pkg = os.path.join(build_dir, pkgname)
+	build_dir_pkg = os.path.join(build_dir(arch), pkgname)
 	src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
 
 	# Create the directory to prevent pkgs exploiting other pkgs (tarbombs)
@@ -128,16 +135,16 @@ def make_pkg(pkgname, arch):
 			os.chmod(os.path.join(r, f), 0o644)
 
 	try:
-		subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir, '-r', chroot, '--', '--noprogressbar'], cwd=build_dir_pkg)
+		subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir(arch), '-r', chroot(arch), '--', '--noprogressbar'], cwd=build_dir_pkg)
 		arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 		for item in find_pkg_files(pkgname, build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.info("Publishing pkg '%s'" % item)
 			ver_publish = '%s-%s' % (ipkgver, ipkgrel)
-			publish_pkg(pkgname, ver_publish, arch_publish)
+			publish_pkg(pkgname, arch, ver_publish, arch_publish)
 			# Cleanup built pkg
 			os.remove(os.path.join(build_dir_pkg, item))
-		db.set_build(pkgname, deps, arch)
+		db.set_build(pkgname, deps, arch, arch_publish)
 		log.warning("Done building '%s'" % pkgname)
 		return True
 	except Exception as e:
@@ -192,14 +199,21 @@ def check_pkg(pkgname, arch, do_build=False):
 			for dep in remote_deps:
 				try:
 					ver_remote = remote_pkgver(dep)
+				except KeyError:
+					log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
+					build_blocked = True
+				try:
 					ver_local = pkg_build.linkdepends[dep]['version']
 					if version_newer(ver_local, ver_remote):
 						log.warning("Remote Dependency '%s' of AUR-PKG '%s' updated (%s -> %s) --> rebuilding" % (dep, pkgname, ver_local, ver_remote))
 						do_build = True
 						break
 				except KeyError:
-					log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
-					build_blocked = True
+					# This only happens if a packager added a dependency
+					# without increasing the pkgrel
+					log.warning("Remote Dependency '%s' of AUR-PKG '%s' added (%s) --> rebuilding" % (dep, pkgname, ver_remote))
+					do_build = True
+					break
 	except Exception as e:
 		log.warning("No build for AUR-PKG '%s' --> building" % pkgname)
 		build_available = False
@@ -218,7 +232,8 @@ def check_pkg(pkgname, arch, do_build=False):
 		elif dep_res == Dependency.blocked:
 			build_blocked = True
 		# New dependency build available
-		elif not do_build:
+		# any pkg's are not rebuilt, as this would lead to building them still for each arch
+		elif not do_build and not pkg_local.arch[0] == 'any':
 			dep_build_time_link = pkg_build.linkdepends[dep]['build_time']
 			dep_build_time_available = db.get_build(dep, arch).build_time
 			if dep_build_time_link < dep_build_time_available:
@@ -247,29 +262,27 @@ webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 try:
 	for arch in AurBSConfig().architectures if not args.arch else [args.arch]:
 		log.info("Building for architecture %s" % arch)
-		chroot = os.path.join('/var/lib/aurbs/chroot', arch)
-		chroot_root = os.path.join(chroot, 'root')
-		build_dir = os.path.join('/var/cache/aurbs/build', arch)
-		ccache_dir = os.path.join('/var/cache/aurbs/ccache', arch)
-		repodir = os.path.join('/var/lib/aurbs/aurstaging', arch)
 
 		# Create chroot, if missing
-		if not os.path.exists(chroot_root):
+		if not os.path.exists(chroot_root(arch)):
 			subprocess.check_call(['mkarchroot',
 				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
 				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
-				chroot_root,
+				chroot_root(arch),
 				'base-devel', 'ccache', 'git'
 			])
 
-		subprocess.check_call(["arch-nspawn", chroot_root, "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
-		remote_db = RemoteDB(chroot_root)
+		subprocess.check_call(["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
+		remote_db = RemoteDB(chroot_root(arch))
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
 			check_pkg(pkg, arch, args.force or args.forceall)
 			#TODO: write status page
-		#TODO: Publish repo
+		if not args.arch and not args.pkg:
+			#TODO: Publish repo
+			pass
 except FatalError as e:
 	log.error("Fatal Error: %s" % e)
+	sys.exit(1)
 finally:
 	webserver.stop()

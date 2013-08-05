@@ -7,7 +7,9 @@ import logging
 import time
 
 import aur
+from config import AurBSConfig
 from model import *
+from static import *
 import pkg_parser
 import re
 
@@ -23,7 +25,7 @@ def _clean_dep_ver(deps):
 	return deps_out
 
 def import_pkg(pkgname):
-	tar = tarfile.open('/var/cache/aurbs/srcpkgs/%s.tar.gz' % pkgname)
+	tar = tarfile.open(os.path.join(srcpkgdir, '%s.tar.gz' % pkgname))
 	pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkgname))
 	a = aur.get(pkgname)
 	try:
@@ -35,11 +37,11 @@ def import_pkg(pkgname):
 	except KeyError:
 		a._data['makedepends'] = []
 	a._data['arch'] = _clean_dep_ver(pkgbuild['arch'])
-	json.dump(a._data, open('/var/lib/aurbs/pkg_db/%s.json' % pkgname, 'w'), sort_keys=True, indent=4)
+	json.dump(a._data, open(os.path.join(pkg_db_dir, '%s.json' % pkgname), 'w'), sort_keys=True, indent=4)
 
 def get_pkg(pkgname):
 	try:
-		r = json.load(open('/var/lib/aurbs/pkg_db/%s.json' % pkgname, 'r'))
+		r = json.load(open(os.path.join(pkg_db_dir, '%s.json' % pkgname), 'r'))
 		a = AurPkg(r)
 		return a
 	except IOError:
@@ -47,14 +49,26 @@ def get_pkg(pkgname):
 
 def get_build(pkgname, arch):
 	try:
-		b = json.load(open('/var/lib/aurbs/build_db/%s/%s.json' % (arch, pkgname), 'r'))
+		b = json.load(open(os.path.join(build_db_dir(arch), '%s.json' % pkgname), 'r'))
 		b = PkgBuild(b)
 		return b
 	except IOError:
 		raise KeyError("No such build: '%s'" % pkgname)
 
-def set_build(pkgname, dependencies, arch):
+def set_build(pkgname, dependencies, arch, arch_publish):
 	b = PkgBuild(get_pkg(pkgname)._data)
 	b._data['linkdepends'] = dependencies
 	b._data['build_time'] = int(time.time())
-	json.dump(b._data, open('/var/lib/aurbs/build_db/%s/%s.json' % (arch, pkgname), 'w'), sort_keys=True, indent=4)
+	b._data['build_arch'] = arch
+	build_file = os.path.join(build_db_dir(arch_publish), '%s.json' % pkgname)
+	if os.path.exists(build_file):
+		os.remove(build_file)
+	json.dump(b._data, open(os.path.join(build_db_dir(arch_publish), '%s.json' % pkgname), 'w'), sort_keys=True, indent=4)
+	if arch_publish == 'any':
+		for build_arch in AurBSConfig().architectures:
+			filename = '%s.json' % pkgname
+			source = os.path.join('..', arch_publish, filename)
+			target = os.path.join(build_db_dir(build_arch), filename)
+			if os.path.exists(target):
+				os.remove(target)
+			os.symlink(source, target)

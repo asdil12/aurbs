@@ -79,6 +79,9 @@ mkdir('usr/share/aurbs/cfg')
 mkdir('var/cache/aurbs/srcpkgs')
 mkdir('var/lib/aurbs/pkg_db')
 
+mkdir('var/lib/aurbs/aurstaging/any')
+mkdir('var/lib/aurbs/build_db/any')
+
 for arch in archs:
 	process_template('makepkg.conf.in', 'usr/share/aurbs/cfg/makepkg.conf.%s' % arch, tplvars['makepkg'][arch])
 	process_template('pacman.conf.in', 'usr/share/aurbs/cfg/pacman.conf.%s' % arch, tplvars['pacman'][arch])

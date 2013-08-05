@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+import os
 import simplejson as json
 import urllib.request, urllib.parse, urllib.error
 import urllib.request, urllib.error, urllib.parse
 from optparse import OptionParser
 
 from model import *
+from static import *
 
 target_url = "http://aur.archlinux.org/rpc.php"
 
@@ -42,7 +44,7 @@ def get(pkgname, failcount=0):
 def sync(pkgname):
 	a = get(pkgname)
 	u = urllib.request.urlopen(a.srcpkg)
-	f = open("/var/cache/aurbs/srcpkgs/%s.tar.gz" % pkgname, 'wb')
+	f = open(os.path.join(srcpkgdir, '%s.tar.gz' % pkgname), 'wb')
 	f.write(u.read())
 	f.close()
 

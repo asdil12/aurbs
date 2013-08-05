@@ -19,6 +19,7 @@ class AurPkg(dict):
 			"version": r['Version'],
 			"name": r['Name'],
 			"srcpkg": 'https://aur.archlinux.org' + r['URLPath'],
+			"votes": r['NumVotes'],
 		}
 	
 	def __repr__(self):

@@ -29,7 +29,7 @@ class WebServer(object):
 			def handle_error(self, request, client_address):
 				cas = '(%s:%i)' % client_address
 				type_, value_, traceback_ = sys.exc_info()
-				log.warning('Webserver error handling request from: %s: %s' % (client_address, value_.__repr__()))
+				#log.debug('Webserver error handling request from: %s: %s' % (client_address, value_.__repr__()))
 
 		class Handler(http.server.SimpleHTTPRequestHandler):
 			def translate_path(self, path):

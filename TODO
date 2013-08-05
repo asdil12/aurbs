@@ -2,5 +2,7 @@
 	- use check_call for subprocesses
 	- block build on missing dependencies or build-fail
 		- hold builds, depending on that
-- add cmdline arg for arch to aurbs.py
-- add cmdline arg for pkg (force rebuild) to aurbs.py
+- add status page (/var/cache/aurbs/status.json)
+- add log collecting on failure (--> /var/lib/aurbs/fails/<arch>/<pkgname>/)
+	- srcpkg, all logfiles
+	- delete this directory on next successfull build

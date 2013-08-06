@@ -260,16 +260,15 @@ def check_pkg(pkgname, arch, do_build=False):
 				do_build = True
 
 	if not build_blocked:
+		db.unset_blocked(pkgname, arch)
 		if do_build:
 			if make_pkg(pkgname, arch):
 				pkg_checked[pkgname] = Dependency.rebuilt
-				db.unset_blocked(pkgname, arch)
 			else:
 				pkg_checked[pkgname] = Dependency.blocked
 				# we already have a db.set_fail, so no set_block
 		else:
 			pkg_checked[pkgname] = Dependency.ok
-			db.unset_blocked(pkgname, arch)
 	else:
 		pkg_checked[pkgname] = Dependency.blocked
 		db.set_blocked(pkgname, arch, reason='depends', depends=depends_blocked)

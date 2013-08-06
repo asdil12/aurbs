@@ -23,3 +23,6 @@ def repodir(arch):
 
 def build_db_dir(arch):
 	return os.path.join('/var/lib/aurbs/build_db', arch)
+
+def fails_dir(arch):
+	return os.path.join('/var/lib/aurbs/fails', arch)

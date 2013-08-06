@@ -5,6 +5,7 @@ import tarfile
 import os
 import logging
 import time
+import shutil
 
 import aur
 from config import AurBSConfig
@@ -61,7 +62,7 @@ def set_build(pkgname, dependencies, arch, arch_publish):
 	b._data['build_time'] = int(time.time())
 	b._data['build_arch'] = arch
 	build_file = os.path.join(build_db_dir(arch_publish), '%s.json' % pkgname)
-	if os.path.exists(build_file):
+	if os.path.lexists(build_file):
 		os.remove(build_file)
 	json.dump(b._data, open(os.path.join(build_db_dir(arch_publish), '%s.json' % pkgname), 'w'), sort_keys=True, indent=4)
 	if arch_publish == 'any':
@@ -69,6 +70,58 @@ def set_build(pkgname, dependencies, arch, arch_publish):
 			filename = '%s.json' % pkgname
 			source = os.path.join('..', arch_publish, filename)
 			target = os.path.join(build_db_dir(build_arch), filename)
-			if os.path.exists(target):
+			if os.path.lexists(target):
 				os.remove(target)
 			os.symlink(source, target)
+
+def set_fail(pkgname, dependencies, arch, arch_publish):
+	fails_dir_pkg = os.path.join(fails_dir(arch_publish), pkgname)
+	b = PkgBuild(get_pkg(pkgname)._data)
+	b._data['linkdepends'] = dependencies
+	b._data['build_time'] = int(time.time())
+	b._data['build_arch'] = arch
+	if os.path.lexists(fails_dir_pkg):
+		if os.path.isdir(fails_dir_pkg):
+			shutil.rmtree(fails_dir_pkg)
+		else:
+			os.remove(fails_dir_pkg)
+	os.mkdir(fails_dir_pkg)
+	json.dump(b._data, open(os.path.join(fails_dir_pkg, 'pkg.json'), 'w'), sort_keys=True, indent=4)
+	# fetch logfiles
+	build_dir_pkg = os.path.join(build_dir(arch), pkgname)
+	for filename in os.listdir(build_dir_pkg):
+		if filename.endswith('build.log'):
+			target = 'build.log'
+		elif filename.endswith('check.log'):
+			target = 'check.log'
+		elif filename.endswith('package.log'):
+			target = 'package.log'
+		else:
+			continue
+		shutil.copyfile(os.path.join(build_dir_pkg, filename), os.path.join(fails_dir_pkg, target))
+	if arch_publish == 'any':
+		for build_arch in AurBSConfig().architectures:
+			source = os.path.join('..', arch_publish, pkgname)
+			target = os.path.join(fails_dir(build_arch), pkgname)
+			if os.path.lexists(target):
+				if os.path.isdir(target):
+					shutil.rmtree(target)
+				else:
+					os.remove(target)
+			os.symlink(source, target)
+
+def unset_fail(pkgname, arch_publish):
+	fails_dir_pkg = os.path.join(fails_dir(arch_publish), pkgname)
+	if os.path.lexists(fails_dir_pkg):
+		if os.path.isdir(fails_dir_pkg):
+			shutil.rmtree(fails_dir_pkg)
+		else:
+			os.remove(fails_dir_pkg)
+	if arch_publish == 'any':
+		for build_arch in AurBSConfig().architectures:
+			target = os.path.join(fails_dir(build_arch), pkgname)
+			if os.path.lexists(target):
+				if os.path.isdir(target):
+					shutil.rmtree(target)
+				else:
+					os.remove(target)

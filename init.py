@@ -81,6 +81,7 @@ mkdir('var/lib/aurbs/pkg_db')
 
 mkdir('var/lib/aurbs/aurstaging/any')
 mkdir('var/lib/aurbs/build_db/any')
+mkdir('var/lib/aurbs/fails/any')
 
 for arch in archs:
 	process_template('makepkg.conf.in', 'usr/share/aurbs/cfg/makepkg.conf.%s' % arch, tplvars['makepkg'][arch])
@@ -92,6 +93,7 @@ for arch in archs:
 	chown('var/cache/aurbs/ccache/%s' % arch, 99, 99)
 
 	mkdir('var/lib/aurbs/build_db/%s' % arch)
+	mkdir('var/lib/aurbs/fails/%s' % arch)
 	mkdir('var/lib/aurbs/chroot/%s' % arch)
 
 	mkdir('var/lib/aurbs/aurstaging/%s' % arch)

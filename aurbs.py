@@ -124,6 +124,9 @@ def make_pkg(pkgname, arch):
 	except FileExistsError:
 		for filename in find_pkg_files(pkgname, build_dir_pkg):
 			os.remove(os.path.join(build_dir_pkg, filename))
+		for filename in os.listdir(build_dir_pkg):
+			if filename.endswith('.log'):
+				os.remove(os.path.join(build_dir_pkg, filename))
 	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
@@ -134,9 +137,9 @@ def make_pkg(pkgname, arch):
 		for f in fs:
 			os.chmod(os.path.join(r, f), 0o644)
 
+	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	try:
 		subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir(arch), '-r', chroot(arch), '--', '--noprogressbar'], cwd=build_dir_pkg)
-		arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 		for item in find_pkg_files(pkgname, build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.info("Publishing pkg '%s'" % item)
@@ -145,12 +148,13 @@ def make_pkg(pkgname, arch):
 			# Cleanup built pkg
 			os.remove(os.path.join(build_dir_pkg, item))
 		db.set_build(pkgname, deps, arch, arch_publish)
+		db.unset_fail(pkgname, arch_publish)
 		log.warning("Done building '%s'" % pkgname)
 		return True
 	except Exception as e:
 		log.error("Failed building '%s'" % pkgname)
 		log.warning("Error: %s" % e)
-		#TODO provide log somehow
+		db.set_fail(pkgname, deps, arch, arch_publish)
 		if args.strict:
 			raise FatalError('Build Failure')
 		return False

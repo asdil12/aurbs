@@ -144,6 +144,11 @@ def set_blocked(pkgname, arch, reason, depends=None):
 	json.dump(b._data, open(target, 'w'), sort_keys=True, indent=4)
 
 def unset_blocked(pkgname, arch):
-	target = os.path.join(blocks_dir(arch), '%s.json' % pkgname)
-	if os.path.lexists(target):
-		os.remove(target)
+	if get_pkg(pkgname).arch[0] == 'any':
+		archs = AurBSConfig().architectures
+	else:
+		archs = [arch]
+	for arch in archs:
+		target = os.path.join(blocks_dir(arch), '%s.json' % pkgname)
+		if os.path.lexists(target):
+			os.remove(target)

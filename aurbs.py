@@ -248,12 +248,12 @@ def check_pkg(pkgname, arch, do_build=False):
 		if do_build:
 			if make_pkg(pkgname, arch):
 				pkg_checked[pkgname] = Dependency.rebuilt
-			elif not build_available:
+			else:
 				pkg_checked[pkgname] = Dependency.blocked
 		else:
 			pkg_checked[pkgname] = Dependency.ok
 	else:
-		pkg_checked[pkgname] = Dependency.ok if build_available else Dependency.blocked
+		pkg_checked[pkgname] = Dependency.blocked
 	return pkg_checked[pkgname]
 
 

@@ -38,6 +38,19 @@ class PkgBuild(dict):
 	def __repr__(self):
 		return "<PkgBuild %s-%s>" % (self.name, self.version)
 
+class PkgBlock(dict):
+	def __init__(self, data=None):
+		self._data = data
+
+	def __getattr__(self, key):
+		return self._data[key]
+
+	def __getitem__(self, key):
+		return self._data[key]
+
+	def __repr__(self):
+		return "<PkgBlock %s: %s>" % (self.name, self.reason)
+
 class Singleton(object):
 	def __init__(self, cls):
 		self.cls = cls

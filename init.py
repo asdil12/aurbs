@@ -94,6 +94,7 @@ for arch in archs:
 
 	mkdir('var/lib/aurbs/build_db/%s' % arch)
 	mkdir('var/lib/aurbs/fails/%s' % arch)
+	mkdir('var/lib/aurbs/blocks/%s' % arch)
 	mkdir('var/lib/aurbs/chroot/%s' % arch)
 
 	mkdir('var/lib/aurbs/aurstaging/%s' % arch)

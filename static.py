@@ -26,3 +26,6 @@ def build_db_dir(arch):
 
 def fails_dir(arch):
 	return os.path.join('/var/lib/aurbs/fails', arch)
+
+def blocks_dir(arch):
+	return os.path.join('/var/lib/aurbs/blocks', arch)

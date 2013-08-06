@@ -166,9 +166,23 @@ def check_pkg(pkgname, arch, do_build=False):
 	build_blocked = False
 	build_available = True
 
+	depends_blocked = {
+		'missing': [],
+		'blocked': [],
+	}
+
+	log.debug("Inquiring local pkg: %s" % pkgname)
+
 	#FIXME: also handle Exceptions via FatalError
 	# and see if args.strict is set
-	pkg_aur = aur.get(pkgname)
+	try:
+		pkg_aur = aur.get(pkgname)
+	except:
+		db.set_blocked(pkgname, arch, reason='not_in_aur')
+		if args.strict:
+			raise FatalError('PKG not in AUR: %s' % pkgname)
+		pkg_checked[pkgname] = Dependency.blocked
+		return pkg_checked[pkgname]
 
 	# Check PKG in local db & up to date
 	try:
@@ -192,42 +206,41 @@ def check_pkg(pkgname, arch, do_build=False):
 	# Check against previous build
 	try:
 		pkg_build = db.get_build(pkgname, arch)
-
 		# Check version changed
 		if version_newer(pkg_build.version, pkg_local.version):
 			log.warning("AUR-PKG '%s' outdated build --> rebuilding" % pkgname)
 			do_build = True
-		else:
-			# Check for remote dependency updates
-			remote_deps = filter_dependencies([pkg_local.depends], local=False)
-			for dep in remote_deps:
-				try:
-					ver_remote = remote_pkgver(dep)
-				except KeyError:
-					log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
-					build_blocked = True
-					continue
-				try:
-					ver_local = pkg_build.linkdepends[dep]['version']
-					if version_newer(ver_local, ver_remote):
-						log.warning("Remote Dependency '%s' of AUR-PKG '%s' updated (%s -> %s) --> rebuilding" % (dep, pkgname, ver_local, ver_remote))
-						do_build = True
-						break
-				except KeyError:
-					# This only happens if a packager added a dependency
-					# without increasing the pkgrel
-					log.warning("Remote Dependency '%s' of AUR-PKG '%s' added (%s) --> rebuilding" % (dep, pkgname, ver_remote))
-					do_build = True
-					break
 	except Exception as e:
 		log.warning("No build for AUR-PKG '%s' --> building" % pkgname)
 		build_available = False
 		do_build = True
+		pkg_build = False
 		print("EXCEPTION-FIXME: %s" % e)
+
+	# Check for remote dependency updates and missing remote deps
+	remote_deps = filter_dependencies([pkg_local.depends], local=False)
+	for dep in remote_deps:
+		try:
+			ver_remote = remote_pkgver(dep)
+		except KeyError:
+			log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
+			build_blocked = True
+			depends_blocked['missing'].append(dep)
+			continue
+		if pkg_build and not do_build:
+			try:
+				ver_local = pkg_build.linkdepends[dep]['version']
+				if version_newer(ver_local, ver_remote):
+					log.warning("Remote Dependency '%s' of AUR-PKG '%s' updated (%s -> %s) --> rebuilding" % (dep, pkgname, ver_local, ver_remote))
+					do_build = True
+			except KeyError:
+				# This only happens if a packager added a dependency
+				# without increasing the pkgrel
+				log.warning("Remote Dependency '%s' of AUR-PKG '%s' added (%s) --> rebuilding" % (dep, pkgname, ver_remote))
+				do_build = True
 
 	# Check for local dependencs updates
 	local_deps = filter_dependencies([pkg_local.depends, pkg_local.makedepends], local=True)
-	log.debug("Inquiring local pkg '%s' - ldeps: (%s)" % (pkgname, ', '.join(local_deps)))
 	for dep in local_deps:
 		# Rebuild trigger
 		dep_res = check_pkg(dep, arch, args.forceall)
@@ -235,6 +248,7 @@ def check_pkg(pkgname, arch, do_build=False):
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))
 			do_build = True
 		elif dep_res == Dependency.blocked:
+			depends_blocked['blocked'].append(dep)
 			build_blocked = True
 		# New dependency build available
 		# any pkg's are not rebuilt, as this would lead to building them still for each arch
@@ -249,12 +263,16 @@ def check_pkg(pkgname, arch, do_build=False):
 		if do_build:
 			if make_pkg(pkgname, arch):
 				pkg_checked[pkgname] = Dependency.rebuilt
+				db.unset_blocked(pkgname, arch)
 			else:
 				pkg_checked[pkgname] = Dependency.blocked
+				# we already have a db.set_fail, so no set_block
 		else:
 			pkg_checked[pkgname] = Dependency.ok
+			db.unset_blocked(pkgname, arch)
 	else:
 		pkg_checked[pkgname] = Dependency.blocked
+		db.set_blocked(pkgname, arch, reason='depends', depends=depends_blocked)
 	return pkg_checked[pkgname]
 
 

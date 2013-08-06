@@ -125,3 +125,25 @@ def unset_fail(pkgname, arch_publish):
 					shutil.rmtree(target)
 				else:
 					os.remove(target)
+
+def set_blocked(pkgname, arch, reason, depends=None):
+	if reason == 'not_in_aur':
+		b = PkgBlock({
+			'name': pkgname,
+		})
+	else:
+		b = PkgBlock(get_pkg(pkgname)._data)
+	b._data['build_time'] = int(time.time())
+	b._data['build_arch'] = arch
+	b._data['block_reason'] = reason
+	if reason == 'depends':
+		b._data['block_depends'] = depends
+	target = os.path.join(blocks_dir(arch), '%s.json' % pkgname)
+	if os.path.lexists(target):
+		os.remove(target)
+	json.dump(b._data, open(target, 'w'), sort_keys=True, indent=4)
+
+def unset_blocked(pkgname, arch):
+	target = os.path.join(blocks_dir(arch), '%s.json' % pkgname)
+	if os.path.lexists(target):
+		os.remove(target)

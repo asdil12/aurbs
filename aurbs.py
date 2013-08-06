@@ -206,6 +206,7 @@ def check_pkg(pkgname, arch, do_build=False):
 				except KeyError:
 					log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
 					build_blocked = True
+					continue
 				try:
 					ver_local = pkg_build.linkdepends[dep]['version']
 					if version_newer(ver_local, ver_remote):

@@ -1,5 +1,6 @@
-- pacman -S devtools python-distribute python-simplejson python-yaml pyalpm
+- pacman -S devtools python-distribute python-simplejson python-yaml python-pymongo pyalpm
 - run `init.py` to create directory structure
 - set PACKAGER in `/etc/makepkg.conf`
 - modify `/etc/aurbs.yml` to define you pkgs and archs
+- make sure that mongodb is running
 - run `aurbs.py` to build pkgs

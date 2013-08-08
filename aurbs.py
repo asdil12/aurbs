@@ -4,18 +4,18 @@ import sys
 import os
 import shutil
 import subprocess
-from pkg_resources import parse_version
 import logging
 import logging.handlers
 import argparse
 
-import aur
-import db
-from config import AurBSConfig
-from webserver import WebServer
-from remotedb import RemoteDB
-from model import Dependency, FatalError
-from static import *
+from aurbs import aur
+from aurbs.config import AurBSConfig
+from aurbs.db import Database
+from aurbs.webserver import WebServer
+from aurbs.model import Dependency, FatalError
+
+from aurbs.static import *
+from aurbs.helper import *
 
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
@@ -42,36 +42,9 @@ else:
 log.addHandler(loghandler)
 
 
-def remote_pkgver(name):
-	try:
-		return remote_db.get_pkg(name).version
-	except AttributeError:
-		raise KeyError("No provider found for remote pkg '%s'" % name)
-
-def version_newer(old, new):
-	return parse_version(new) > parse_version(old)
-
-def filter_dependencies(args, local=True, nofilter=False):
-	deps = set()
-	for arg in args:
-		deps = deps.union(arg)
-	if nofilter:
-		return deps
-	if local:
-		return [d for d in deps if d in AurBSConfig().aurpkgs]
-	else:
-		return [d for d in deps if d not in AurBSConfig().aurpkgs]
-
-def find_pkg_files(pkgname, directory):
-	respkgs = []
-	for item in os.listdir(directory):
-		if item.endswith('pkg.tar.xz'):
-			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-			if ipkgname == pkgname:
-				respkgs.append(item)
-	return respkgs
-
-def publish_pkg(pkgname, arch, version, arch_publish):
+def publish_pkg(pkgname, arch, version):
+	pkg = db.get_pkg(pkgname)
+	arch_publish = 'any' if pkg['arch'][0] == 'any' else arch
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch_publish)
 	repo_archs = AurBSConfig().architectures if arch_publish == 'any' else [arch]
 
@@ -101,19 +74,19 @@ def publish_pkg(pkgname, arch, version, arch_publish):
 
 def make_pkg(pkgname, arch):
 	pkg = db.get_pkg(pkgname)
-	deps = {}
-	for dep in filter_dependencies([pkg.depends, pkg.makedepends], local=False):
+	deps = []
+	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=False):
 		try:
-			deps[dep] = {'version': remote_pkgver(dep)}
+			deps.append({'name': dep, 'version': remote_pkgver(dep, arch)})
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
-	for dep in filter_dependencies([pkg.depends, pkg.makedepends], local=True):
+	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=True):
 		try:
-			dep_build = db.get_build(dep, arch)
-			deps[dep] = {'version': dep_build.version, 'build_time': dep_build.build_time}
+			dep_build = db.get_result(dep, arch, 'build')
+			deps.append({'name': dep, 'version': dep_build['version'], 'date': dep_build['date']})
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
-	log.warning("BUILDING PKG: %s (%s)" % (pkgname, deps))
+	log.warning("Building pkg: %s" % pkgname)
 
 	build_dir_pkg = os.path.join(build_dir(arch), pkgname)
 	src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
@@ -137,24 +110,25 @@ def make_pkg(pkgname, arch):
 		for f in fs:
 			os.chmod(os.path.join(r, f), 0o644)
 
-	arch_publish = 'any' if pkg.arch[0] == 'any' else arch
 	try:
+		# FIXME:
+		# only use the log from subprocess:
+		# stdout=open("/tmp/l.log", 'w'), stderr=subprocess.STDOUT
 		subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir(arch), '-r', chroot(arch), '--', '--noprogressbar'], cwd=build_dir_pkg)
 		for item in find_pkg_files(pkgname, build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.info("Publishing pkg '%s'" % item)
 			ver_publish = '%s-%s' % (ipkgver, ipkgrel)
-			publish_pkg(pkgname, arch, ver_publish, arch_publish)
+			publish_pkg(pkgname, arch, ver_publish)
 			# Cleanup built pkg
 			os.remove(os.path.join(build_dir_pkg, item))
-		db.set_build(pkgname, deps, arch, arch_publish)
-		db.unset_fail(pkgname, arch_publish)
+		db.set_result(pkgname, arch, 'build', linkdepends=deps)
 		log.warning("Done building '%s'" % pkgname)
 		return True
 	except Exception as e:
 		log.error("Failed building '%s'" % pkgname)
 		log.warning("Error: %s" % e)
-		db.set_fail(pkgname, deps, arch, arch_publish)
+		db.set_result(pkgname, arch, 'problem', ptype='fail', linkdepends=deps)
 		if args.strict:
 			raise FatalError('Build Failure')
 		return False
@@ -164,21 +138,16 @@ def check_pkg(pkgname, arch, do_build=False):
 		return pkg_checked[pkgname]
 
 	build_blocked = False
-	build_available = True
-
-	depends_blocked = {
-		'missing': [],
-		'blocked': [],
-	}
+	problem_depends = []
 
 	log.debug("Inquiring local pkg: %s" % pkgname)
 
 	#FIXME: also handle Exceptions via FatalError
 	# and see if args.strict is set
 	try:
-		pkg_aur = aur.get(pkgname)
+		pkg_aur = aur.get_pkg(pkgname)
 	except:
-		db.set_blocked(pkgname, arch, reason='not_in_aur')
+		db.set_result(pkgname, arch, 'problem', ptype='not_in_aur')
 		if args.strict:
 			raise FatalError('PKG not in AUR: %s' % pkgname)
 		pkg_checked[pkgname] = Dependency.blocked
@@ -195,41 +164,39 @@ def check_pkg(pkgname, arch, do_build=False):
 		except:
 			log.warning("AUR-PKG '%s' not found in local db --> syncing" % pkgname)
 			raise
-		if version_newer(pkg_local.version, pkg_aur.version):
+		if version_newer(pkg_local['version'], pkg_aur['version']):
 			log.warning("AUR-PKG '%s' outdated in local db --> resyncing" % pkgname)
 			raise
 	except:
-		aur.sync(pkgname)
-		db.import_pkg(pkgname)
+		db.sync_pkg(pkgname)
 		pkg_local = db.get_pkg(pkgname)
 
 	# Check against previous build
 	try:
-		pkg_build = db.get_build(pkgname, arch)
+		pkg_build = db.get_result(pkgname, arch, 'build')
+		assert pkg_build
 		# Check version changed
-		if version_newer(pkg_build.version, pkg_local.version):
+		if version_newer(pkg_build['version'], pkg_local['version']):
 			log.warning("AUR-PKG '%s' outdated build --> rebuilding" % pkgname)
 			do_build = True
-	except Exception as e:
+	except (KeyError, AssertionError):
 		log.warning("No build for AUR-PKG '%s' --> building" % pkgname)
-		build_available = False
 		do_build = True
 		pkg_build = False
-		print("EXCEPTION-FIXME: %s" % e)
 
 	# Check for remote dependency updates and missing remote deps
-	remote_deps = filter_dependencies([pkg_local.depends], local=False)
+	remote_deps = filter_dependencies([pkg_local['depends']], local=False)
 	for dep in remote_deps:
 		try:
-			ver_remote = remote_pkgver(dep)
+			ver_remote = remote_pkgver(dep, arch)
 		except KeyError:
-			log.error("Check: Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
+			log.error("Dependency '%s' for '%s' not found! Build blocked." % (dep, pkgname))
 			build_blocked = True
-			depends_blocked['missing'].append(dep)
+			problem_depends.append(dep)
 			continue
 		if pkg_build and not do_build:
 			try:
-				ver_local = pkg_build.linkdepends[dep]['version']
+				ver_local = by_name(pkg_build['linkdepends'], dep)['version']
 				if version_newer(ver_local, ver_remote):
 					log.warning("Remote Dependency '%s' of AUR-PKG '%s' updated (%s -> %s) --> rebuilding" % (dep, pkgname, ver_local, ver_remote))
 					do_build = True
@@ -239,8 +206,15 @@ def check_pkg(pkgname, arch, do_build=False):
 				log.warning("Remote Dependency '%s' of AUR-PKG '%s' added (%s) --> rebuilding" % (dep, pkgname, ver_remote))
 				do_build = True
 
+	if build_blocked:
+		db.set_result(pkgname, arch, 'problem', ptype='missing_depends', depends=problem_depends)
+		if args.strict:
+			raise FatalError("Dependencies for pkg '%s' missing: %s" % (pkgname, ', '.join(problem_depends)))
+		pkg_checked[pkgname] = Dependency.blocked
+		return pkg_checked[pkgname]
+
 	# Check for local dependencs updates
-	local_deps = filter_dependencies([pkg_local.depends, pkg_local.makedepends], local=True)
+	local_deps = filter_dependencies([pkg_local['depends'], pkg_local['makedepends']], local=True)
 	for dep in local_deps:
 		# Rebuild trigger
 		dep_res = check_pkg(dep, arch, args.forceall)
@@ -248,36 +222,43 @@ def check_pkg(pkgname, arch, do_build=False):
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))
 			do_build = True
 		elif dep_res == Dependency.blocked:
-			depends_blocked['blocked'].append(dep)
+			problem_depends.append(dep)
 			build_blocked = True
 		# New dependency build available
 		# any pkg's are not rebuilt, as this would lead to building them still for each arch
-		elif not do_build and not pkg_local.arch[0] == 'any':
+		elif not do_build and not pkg_local['arch'][0] == 'any':
+			# pkg_build IS set here - otherwise do_build would be true
 			dep_build_time_link = pkg_build.linkdepends[dep]['build_time']
-			dep_build_time_available = db.get_build(dep, arch).build_time
+			dep_build_time_available = db.get_result(dep, arch, 'build')['build_time']
 			if dep_build_time_link < dep_build_time_available:
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True
 
-	if not build_blocked:
-		db.unset_blocked(pkgname, arch)
-		if do_build:
-			if make_pkg(pkgname, arch):
-				pkg_checked[pkgname] = Dependency.rebuilt
-			else:
-				pkg_checked[pkgname] = Dependency.blocked
-				# we already have a db.set_fail, so no set_block
-		else:
-			pkg_checked[pkgname] = Dependency.ok
-	else:
+	if build_blocked:
+		db.set_result(pkgname, arch, 'problem', ptype='blocked_depends', depends=problem_depends)
+		if args.strict:
+			raise FatalError("Dependencies for pkg '%s' blocked: %s" % (pkgname, ', '.join(problem_depends)))
 		pkg_checked[pkgname] = Dependency.blocked
-		db.set_blocked(pkgname, arch, reason='depends', depends=depends_blocked)
+		return pkg_checked[pkgname]
+
+	db.delete_result(pkgname, arch, 'problem')
+	if do_build:
+		if make_pkg(pkgname, arch):
+			pkg_checked[pkgname] = Dependency.rebuilt
+		else:
+			pkg_checked[pkgname] = Dependency.blocked
+			# we already have a db.set_fail, so no set_block
+	else:
+		pkg_checked[pkgname] = Dependency.ok
 	return pkg_checked[pkgname]
 
 
 # Initialize config
 log.debug("Reading config from '%s'" % args.config)
 AurBSConfig(args.config)
+
+# Create database connection
+db = Database()
 
 webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
@@ -295,11 +276,10 @@ try:
 			])
 
 		subprocess.check_call(["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
-		remote_db = RemoteDB(chroot_root(arch))
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
 			check_pkg(pkg, arch, args.force or args.forceall)
-			#TODO: write status page
+			#TODO: write status page (and status log - check_pkg return...)
 		if not args.arch and not args.pkg:
 			#TODO: Publish repo
 			pass

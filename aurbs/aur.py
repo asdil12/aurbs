@@ -6,13 +6,12 @@ import urllib.request, urllib.parse, urllib.error
 import urllib.request, urllib.error, urllib.parse
 from optparse import OptionParser
 
-from model import *
-from static import *
+from aurbs.static import *
 
 target_url = "http://aur.archlinux.org/rpc.php"
 
 class AppURLopener(urllib.request.FancyURLopener):
-	version = 'AURJSON-Example/1.0 python'
+	version = 'AurBS/1.0 python'
 
 urllib.request._urlopener = AppURLopener()
 
@@ -26,24 +25,32 @@ def info(args):
 	response = urllib.request.urlopen("%s?%s" % (target_url,params)).read()
 	print_results(json.loads(response))
 
-def get(pkgname, failcount=0):
+def convert_data(r):
+	return {
+		"maintainer": r['Maintainer'],
+		"description": r['Description'],
+		"license": r['License'],
+		"id": r['ID'],
+		"version": r['Version'],
+		"name": r['Name'],
+		"srcpkg": 'https://aur.archlinux.org' + r['URLPath'],
+		"votes": r['NumVotes'],
+	}
+
+def get_pkg(pkgname, failcount=0):
 	params = urllib.parse.urlencode({'type':'info', 'arg':pkgname})
 	response = urllib.request.urlopen("%s?%s" % (target_url,params)).read()
 	result = json.loads(response)
 	if not result['resultcount'] == 1 and result['type'] == 'info':
-		if failcount > 1:
-			raise Exception("Invalid AUR API result for '%s'" % pkgname)
-		else:
-			return get(pkgname, failcount+1)
-		
-	r = result['results']
-	a = AurPkg()
-	a.import_aur(r)
-	return a
+		#if failcount > 1:
+		raise Exception("Invalid AUR API result for '%s'" % pkgname)
+		#else:
+		#	return get(pkgname, failcount+1)
+	return convert_data(result['results'])
 
 def sync(pkgname):
-	a = get(pkgname)
-	u = urllib.request.urlopen(a.srcpkg)
+	a = get_pkg(pkgname)
+	u = urllib.request.urlopen(a['srcpkg'])
 	f = open(os.path.join(srcpkgdir, '%s.tar.gz' % pkgname), 'wb')
 	f.write(u.read())
 	f.close()

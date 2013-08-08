@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-from model import Singleton
 from yaml import load, dump
 try:
 	from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
 	from yaml import Loader, Dumper
+
+from aurbs.model import Singleton
 
 @Singleton
 class AurBSConfig(object):

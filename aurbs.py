@@ -228,8 +228,8 @@ def check_pkg(pkgname, arch, do_build=False):
 		# any pkg's are not rebuilt, as this would lead to building them still for each arch
 		elif not do_build and not pkg_local['arch'][0] == 'any':
 			# pkg_build IS set here - otherwise do_build would be true
-			dep_build_time_link = pkg_build.linkdepends[dep]['build_time']
-			dep_build_time_available = db.get_result(dep, arch, 'build')['build_time']
+			dep_build_time_link = by_name(pkg_build['linkdepends'], dep)['date']
+			dep_build_time_available = db.get_result(dep, arch, 'build')['date']
 			if dep_build_time_link < dep_build_time_available:
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True

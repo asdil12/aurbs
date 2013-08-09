@@ -24,6 +24,8 @@ class Database(object):
 		self._client = MongoClient(AurBSConfig().database['host'], AurBSConfig().database['port'])
 		self._db = self._client[AurBSConfig().database['database']]
 		self._db.packages.ensure_index("name", unique=True, dropDups=True)
+		for rtype in ['build', 'problem']:
+			self._db["%ss" % rtype].ensure_index("name")
 
 	def get_pkg(self, pkgname):
 		pkg = self._db.packages.find_one({"name": pkgname})
@@ -51,28 +53,29 @@ class Database(object):
 
 	def _cleanup_results(self, pkgname):
 		# cleanup non-matching results (any-results for i686-x86_64 pkg)
-		pkg = self.get_pkg(pkgname)
-		any_arch = True if pkg['arch'][0] == "any" else False
-		for arch, result in pkg.get("results", {}).items():
-			if any_arch and arch == 'any':
-				continue
-			elif not any_arch and arch != 'any':
-				continue
-			for rtype, ref in result:
-				self._db["%ss" % rtype].remove(ref)
-				self._db.packages.update({"_id": pkg['_id']}, {"$unset": {"results.%s" % arch: {}}})
-				# also cleanup logfiles
+		try:
+			pkg = self.get_pkg(pkgname)
+			any_arch = True if pkg['arch'][0] == "any" else False
+			for rtype in ['build', 'problem']:
+				for result in self._db["%ss" % rtype].find({'name': pkgname}):
+					if any_arch and result['arch'] == 'any':
+						continue
+					elif not any_arch and result['arch'] != 'any':
+						continue
+					self._db["%ss" % rtype].remove(result)
+		except KeyError:
+			pass
 
 	def set_result(self, pkgname, build_arch, rtype, **kwargs):
 		# arch via pkg from db
 		# rtype = problem | build
-		pkg = self.get_pkg(pkgname)
+		self._cleanup_results(pkgname)
 		try:
+			pkg = self.get_pkg(pkgname)
 			arch = "any" if pkg['arch'][0] == "any" else build_arch
-			self._cleanup_results(pkgname)
 		except KeyError:
+			pkg = dummy.aurpkg(pkgname)
 			arch = build_arch
-		setk = "results.%s.%s" % (arch, rtype)
 		setv = {
 			"name": pkg['name'],
 			"arch": arch,
@@ -99,34 +102,30 @@ class Database(object):
 					"version": pkg['version']
 				})
 		try:
-			setr = pkg['results'][arch][rtype]
-			assert self._db["%ss" % rtype].update({"_id": setr}, setv)['n']
-		except (KeyError, AssertionError):
+			setr = self.get_result(pkgname, build_arch, rtype)
+			self._db["%ss" % rtype].update(setr, setv)
+		except KeyError:
 			setr = self._db["%ss" % rtype].insert(setv)
-		self._db.packages.update({"_id": pkg['_id']}, {"$set": {setk: setr}})
 
 	def get_result(self, pkgname, build_arch, rtype=None):
 		# arch via pkg from db
 		# rtype = problem | build
-		pkg = self.get_pkg(pkgname)
 		try:
+			pkg = self.get_pkg(pkgname)
 			arch = "any" if pkg['arch'][0] == "any" else build_arch
 		except KeyError:
+			pkg = dummy.aurpkg(pkgname)
 			arch = build_arch
-		if not rtype:
-			describe_rtype = True
-			for rtype in ['problem', 'build']:
-				if pkg['results'][arch].get(rtype, None):
-					break
-		else:
-			describe_rtype = False
 		if rtype:
-			rvalue = self._db["%ss" % rtype].find_one(pkg['results'][arch][rtype])
-			if describe_rtype:
-				return {"rtype": rtype, "rvalue": rvalue}
-			else:
-				return rvalue
+			rvalue = self._db["%ss" % rtype].find_one({'name': pkgname, 'arch': arch})
+			if not rvalue:
+				raise KeyError("No %s result for %s-%s" % (rtype, pkgname, arch))
+			return rvalue
 		else:
+			for rtype in ['problem', 'build']:
+				rvalue = self._db["%ss" % rtype].find_one({'name': pkgname, 'arch': arch})
+				if rvalue:
+					return {"rtype": rtype, "rvalue": rvalue}
 			return None
 
 	def get_results(self, rtype, **query):
@@ -135,19 +134,15 @@ class Database(object):
 	def delete_result(self, pkgname, build_arch, rtype):
 		# arch via pkg from db
 		# rtype = problem | build
+		self._cleanup_results(pkgname)
 		try:
 			pkg = self.get_pkg(pkgname)
-			try:
-				arch = "any" if pkg['arch'][0] == "any" else build_arch
-				self._cleanup_results(pkgname)
-			except KeyError:
-				arch = build_arch
-			setr = pkg['results'][arch][rtype]
-			self._db["%ss" % rtype].remove(setr)
-			setk = "results.%s.%s" % (arch, rtype)
-			self._db.packages.update({"_id": pkg['_id']}, {"$unset": {setk: None}})
+			arch = "any" if pkg['arch'][0] == "any" else build_arch
 		except KeyError:
-			pass
+			arch = build_arch
+		rvalue = self._db["%ss" % rtype].find_one({'name': pkgname, 'arch': arch})
+		if rvalue:
+			self._db["%ss" % rtype].remove(rvalue)
 
 	def get_pkg_required_by(self, pkgname):
 		pkgs = []

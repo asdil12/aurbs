@@ -174,12 +174,11 @@ def check_pkg(pkgname, arch, do_build=False):
 	# Check against previous build
 	try:
 		pkg_build = db.get_result(pkgname, arch, 'build')
-		assert pkg_build
 		# Check version changed
 		if version_newer(pkg_build['version'], pkg_local['version']):
 			log.warning("AUR-PKG '%s' outdated build --> rebuilding" % pkgname)
 			do_build = True
-	except (KeyError, AssertionError):
+	except KeyError:
 		log.warning("No build for AUR-PKG '%s' --> building" % pkgname)
 		do_build = True
 		pkg_build = False
@@ -281,6 +280,7 @@ try:
 			check_pkg(pkg, arch, args.force or args.forceall)
 			#TODO: write status page (and status log - check_pkg return...)
 		if not args.arch and not args.pkg:
+			#TODO: Depete all files and db entries, that are not in AurBSConfig().aurpkgs (issue #4)
 			#TODO: Publish repo
 			pass
 except FatalError as e:

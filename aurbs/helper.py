@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import re
 from pkg_resources import parse_version
 
@@ -54,3 +55,11 @@ def find_pkg_files(pkgname, directory):
 
 def by_name(dictlist, name):
 	return filter(lambda i: i['name'] == name, dictlist).__next__()
+
+def set_chmod(basedir, dirs, files):
+	os.chmod(basedir, dirs)
+	for r, ds, fs in os.walk(basedir):
+		for d in ds:
+			os.chmod(os.path.join(r, d), dirs)
+		for f in fs:
+			os.chmod(os.path.join(r, f), files)

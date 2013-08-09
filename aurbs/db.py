@@ -62,7 +62,7 @@ class Database(object):
 						continue
 					elif not any_arch and result['arch'] != 'any':
 						continue
-					self._db["%ss" % rtype].remove(result)
+					self._db["%ss" % rtype].remove({'_id': result['_id']})
 		except KeyError:
 			pass
 
@@ -86,6 +86,7 @@ class Database(object):
 		if rtype == 'build':
 			setv.update({
 				"linkdepends": kwargs['linkdepends'],
+				"release": kwargs['release'],
 				"version": pkg['version']
 			})
 		elif rtype == 'problem':
@@ -103,7 +104,7 @@ class Database(object):
 				})
 		try:
 			setr = self.get_result(pkgname, build_arch, rtype)
-			self._db["%ss" % rtype].update(setr, setv)
+			self._db["%ss" % rtype].update({'_id': setr['_id']}, setv)
 		except KeyError:
 			setr = self._db["%ss" % rtype].insert(setv)
 
@@ -142,7 +143,7 @@ class Database(object):
 			arch = build_arch
 		rvalue = self._db["%ss" % rtype].find_one({'name': pkgname, 'arch': arch})
 		if rvalue:
-			self._db["%ss" % rtype].remove(rvalue)
+			self._db["%ss" % rtype].remove({'_id': rvalue['_id']})
 
 	def get_pkg_required_by(self, pkgname):
 		pkgs = []

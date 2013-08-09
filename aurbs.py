@@ -74,6 +74,8 @@ def publish_pkg(pkgname, arch, version):
 
 def make_pkg(pkgname, arch):
 	pkg = db.get_pkg(pkgname)
+
+	# Remember dependencies
 	deps = []
 	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=False):
 		try:
@@ -83,9 +85,20 @@ def make_pkg(pkgname, arch):
 	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=True):
 		try:
 			dep_build = db.get_result(dep, arch, 'build')
-			deps.append({'name': dep, 'version': dep_build['version'], 'date': dep_build['date']})
+			deps.append({'name': dep, 'version': dep_build['version'], 'release': dep_build['release']})
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
+
+	# Compute new release
+	try:
+		build = db.get_result(pkgname, arch, 'build')
+		if version_newer(build['version'], pkg['version']):
+			release = 1
+		else:
+			release = build['release'] + 1
+	except KeyError:
+		release = 1
+
 	log.warning("Building pkg: %s" % pkgname)
 
 	build_dir_pkg = os.path.join(build_dir(arch), pkgname)
@@ -103,12 +116,14 @@ def make_pkg(pkgname, arch):
 	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
-	os.chmod(build_dir_pkg, 0o755)
-	for r, ds, fs in os.walk(build_dir_pkg):
-		for d in ds:
-			os.chmod(os.path.join(r, d), 0o755)
-		for f in fs:
-			os.chmod(os.path.join(r, f), 0o644)
+	set_chmod(build_dir_pkg, dirs=0o755, files=0o644)
+
+	# Inject release into pkgrel in PKGBUILD
+	# this is needed to allow clients to track rebuilds
+	pkgrel = '%s.%i' % (pkg['version'].rsplit("-", 1)[1], release)
+	with open(os.path.join(build_dir_pkg, 'PKGBUILD'), 'a') as PKGBUILD:
+		PKGBUILD.write("\n# Injected by aurbs to track rebuilds\n")
+		PKGBUILD.write("pkgrel=%s\n" % pkgrel)
 
 	try:
 		# FIXME:
@@ -122,7 +137,7 @@ def make_pkg(pkgname, arch):
 			publish_pkg(pkgname, arch, ver_publish)
 			# Cleanup built pkg
 			os.remove(os.path.join(build_dir_pkg, item))
-		db.set_result(pkgname, arch, 'build', linkdepends=deps)
+		db.set_result(pkgname, arch, 'build', linkdepends=deps, release=release)
 		log.warning("Done building '%s'" % pkgname)
 		return True
 	except Exception as e:
@@ -227,9 +242,9 @@ def check_pkg(pkgname, arch, do_build=False):
 		# any pkg's are not rebuilt, as this would lead to building them still for each arch
 		elif not do_build and not pkg_local['arch'][0] == 'any':
 			# pkg_build IS set here - otherwise do_build would be true
-			dep_build_time_link = by_name(pkg_build['linkdepends'], dep)['date']
-			dep_build_time_available = db.get_result(dep, arch, 'build')['date']
-			if dep_build_time_link < dep_build_time_available:
+			dep_build_release_link = by_name(pkg_build['linkdepends'], dep)['release']
+			dep_build_release_available = db.get_result(dep, arch, 'build')['release']
+			if dep_build_release_link < dep_build_release_available:
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True
 

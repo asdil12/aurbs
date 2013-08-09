@@ -292,9 +292,19 @@ try:
 		subprocess.check_call(["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
-			check_pkg(pkg, arch, args.force or args.forceall)
-			#TODO: write status page (and status log - check_pkg return...)
+			if not args.arch and not args.pkg:
+				#TODO: write status page (and status log - check_pkg return...)
+				pkgs_scheduled = [e for e in filter(lambda i: i not in pkg_checked, AurBSConfig().aurpkgs)]
+				try:
+					pkgs_scheduled.remove(pkg)
+				except:
+					pass # already build as dependency
+				pkgs_done = [e for e in pkg_checked.keys()]
+				db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
+			res = check_pkg(pkg, arch, args.force or args.forceall)
 		if not args.arch and not args.pkg:
+			pkgs_done = [e for e in pkg_checked.keys()]
+			db.set_status(scheduled=[], done=pkgs_done, arch=arch)
 			#TODO: Depete all files and db entries, that are not in AurBSConfig().aurpkgs (issue #4)
 			#TODO: Publish repo
 			pass

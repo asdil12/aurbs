@@ -145,6 +145,28 @@ class Database(object):
 		if rvalue:
 			self._db["%ss" % rtype].remove({'_id': rvalue['_id']})
 
+	def set_status(self, scheduled, done, arch, building=None):
+		count = len(scheduled) + len(done)
+		count += 1 if building else 0
+		status = {
+			"type": "status",
+			"scheduled": scheduled,
+			"done": done,
+			"building": building,
+			"arch": arch,
+			"count": count
+		}
+		try:
+			sid = self._db.info.find_one({'type': 'status'})['_id']
+			self._db.info.update({'_id': sid}, status)
+		except:
+			self._db.info.insert(status)
+
+	def get_status(self):
+		status = self._db.info.find_one({'type': 'status'})
+		status.pop("_id")
+		return status
+
 	def get_pkg_required_by(self, pkgname):
 		pkgs = []
 		for pkg in AurBSConfig().aurpkgs:

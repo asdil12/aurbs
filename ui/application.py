@@ -2,7 +2,7 @@
 
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '..'))
 from aurbs import dummy
@@ -25,7 +25,11 @@ def index():
 
 @app.route('/status')
 def status():
-	return "Status monitor"
+	return render_template("status.html", status=db.get_status())
+
+@app.route('/status.json')
+def status_json():
+	return jsonify(db.get_status())
 
 @app.route("/problems")
 def problems():

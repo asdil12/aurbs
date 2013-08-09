@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Status{% endblock %}
+
+{% block container %}
+	<script type="text/javascript">
+		var status = {{ status|tojson }};
+		function display_status(status) {
+			$('#arch').text(status.arch);
+
+			percentage = Math.round(status.done.length / status.count * 100);
+			$('.bar').css('width', percentage+'%').text(percentage+'%')
+
+			$('#scheduled_count').text(status.scheduled.length)
+			list = $('#scheduled_list');
+			list.empty()
+			$.each(status.scheduled, function(i) {
+				var li = $('<li/>').appendTo(list);
+				var a = $('<a/>')
+					.attr('href', '/packages/'+status.scheduled[i])
+					.text(status.scheduled[i])
+					.appendTo(li);
+			});
+
+			$('#done_count').text(status.done.length)
+			list = $('#done_list');
+			list.empty()
+			$.each(status['done'], function(i) {
+				var li = $('<li/>').appendTo(list);
+				var a = $('<a/>')
+					.attr('href', '/packages/'+status.done[i])
+					.text(status.done[i])
+					.appendTo(li);
+			});
+
+			if(status.building) {
+				$('#building').text(status.building)
+			}
+			else {
+				$('#building').empty()
+			}
+
+		}
+		$(document).ready(function() {
+			display_status(status);
+			window.setInterval(function() {
+				$.getJSON('{{ url_for('status_json') }}', display_status);
+			}, 5000);
+		});
+	</script>
+	<h2>Rebuilding <span id="arch">x86_64</span></h2>
+	<div class="row">
+		<div class="span12">
+			<div class="row">
+				<div class="span12">
+					<div class="progress">
+						<div class="bar" style="width: 0%;"></div>
+					</div>
+				</div>
+			</div>
+			<div class="row" style="text-align: center;">
+				<div class="span3">
+					<table class="table table-bordered table-condensed">
+						<tr>
+							<th style="text-align: center;">Scheduled (<span id="scheduled_count">0</span>)</th>
+						</tr>
+						<tr>
+							<td>
+								<ul id="scheduled_list">
+								</ul>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<div class="span6">
+					<table class="table table-bordered table-condensed">
+						<tr>
+							<th style="text-align: center;">Building</th>
+						</tr>
+						<tr>
+							<td id="building" style="text-align: center">
+							</td>
+						</tr>
+					</table>
+				</div>
+				<div class="span3">
+					<table class="table table-bordered table-condensed">
+						<tr>
+							<th style="text-align: center;">Done (<span id="done_count">0</span>)</th>
+						</tr>
+						<tr>
+							<td>
+								<ul id="done_list">
+								</ul>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+			<div class="row">
+				<div class="span3">
+				</div>
+				<div class="span6">
+				</div>
+				<div class="span3">
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

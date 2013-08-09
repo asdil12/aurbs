@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pkg.name }}{% endblock %}
+
+{% block container %}
+	<div class="row">
+		<div class="span12">
+			<div class="row">
+				<div class="span9">
+					<h1>{{ pkg.name }} {{ pkg.version if pkg.version != 'n/a' }}</h1>
+				</div>
+			</div>
+			<div class="row">
+				<div class="span9">
+					<table class="table table-condensed table-striped">
+						<tr>
+							<th>Description:</th>
+							<td style="width: 100%;">{{ pkg.description }}</df>
+						</tr>
+						<tr>
+							<th>License:</th>
+							<td>{{ pkg.license }}</td>
+						</tr>
+						<tr>
+							<th>Votes:</th>
+							<td>{{ pkg.votes }}</td>
+						</tr>
+						<tr>
+							<th>Maintainer:</th>
+							<td><a href="https://aur.archlinux.org/account/{{ pkg.maintainer}}">{{ pkg.maintainer }}</a></td>
+						</tr>
+						<tr>
+							<th>Builds:</th>
+							<td>
+								<ul>
+								{% for arch, build in builds.items() %}
+									<li><a href="{{ repo_url + '/' + arch + '/' + build }}">{{ build }}</a></li>
+								{% endfor %}
+								</ul>
+							</td>
+						</tr>
+						<tr>
+							<th>Local&nbsp;Dependencies:&nbsp;</th>
+							<td>
+								<ul>
+								{% for dep in local_depends %}
+									<li><a href="{{ url_for('package_view', pkgname=dep) }}">{{ dep }}</a></li>
+								{% endfor %}
+								</ul>
+							</td>
+						</tr>
+						<tr>
+							<th>Required&nbsp;by:</th>
+							<td>
+								<ul>
+								{% for dep in required_by %}
+									<li><a href="{{ url_for('package_view', pkgname=dep) }}">{{ dep }}</a></li>
+								{% endfor %}
+								</ul>
+							</td>
+						</tr>
+					</table>
+				</div>
+				<div class="span3">
+					<table class="table table-bordered table-condensed">
+						<tr>
+							<th>Arch</th>
+							<th style="width: 60%;">Result</th>
+					{% for arch, result in results.items() %}
+						<tr>
+							<td title="{{ 'Built on %s'|format(result.rvalue.build_arch) if arch == 'any' and result.rvalue }}">{{ arch }}</td>
+							<td style="text-align: center;" title="{{ result_title(result) }}"><span class="label label-{{ result_class(result) }}" style="width: 90%;">{{ result_name(result) }}</span></td>
+						</tr>
+					{% endfor %}
+					</table>
+					<table class="table table-bordered table-condensed">
+						<tr>
+							<th>Links</th>
+						</tr>
+						<tr>
+							<td>
+								<ul>
+									<li><a href="https://aur.archlinux.org/packages/{{ pkg.name }}/">AUR Page</a></li>
+									{% if pkg.srcpkg %}
+									<li><a href="{{ pkg.srcpkg }}">Download tarball</a></li>
+									{% endif %}
+								</ul>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

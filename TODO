@@ -1,5 +1,3 @@
-- build failure gracefully
-	- use check_call for subprocesses
-	- block build on missing dependencies or build-fail
-		- hold builds, depending on that
-- add status page (/var/cache/aurbs/status.json)
+- add status page
+- add build log
+- properly provide build logs (subprocess.stdout/err) via webui

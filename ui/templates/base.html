@@ -1,0 +1,131 @@
+{% macro navlink(endpoint,text,subendpoints=[]) %}
+    {%- if request.endpoint.endswith(endpoint) or request.endpoint in subendpoints %}
+        <li class='active'><a href='{{url_for(endpoint)}}'>{{text}}</a></li>
+    {% else %}
+        <li><a href='{{url_for(endpoint)}}'>{{text}}</a></li>
+    {%- endif %}
+{% endmacro %}
+{% macro result_title(result) -%}
+	{%- if result.rtype == 'problem' -%}
+		{%- if result.rvalue.type == 'missing_depends' -%}
+			Missing dependencies: {{ ', '.join(result.rvalue.depends) }}
+		{%- elif result.rvalue.type == 'blocked_depends' -%}
+			Missing dependencies: {{ ', '.join(result.rvalue.depends) }}
+		{%- elif result.rvalue.type == 'not_in_aur' -%}
+			PKG does not exist in AUR
+		{%- endif -%}
+	{%- endif -%}
+{%- endmacro %}
+{% macro result_name(result) -%}
+	{%- if result.rtype == 'problem' -%}
+		{%- if result.rvalue.type == 'fail' -%}
+			Failed
+		{%- elif result.rvalue.type == 'not_in_aur' -%}
+			Not in AUR
+		{%- elif result.rvalue.type == 'missing_depends' -%}
+			Dependency missing
+		{%- elif result.rvalue.type == 'blocked_depends' -%}
+			Blocked
+		{%- endif -%}
+	{%- elif result.rtype == 'build' -%}
+		Built
+	{%- else -%}
+		Scheduled
+	{%- endif -%}
+{%- endmacro %}
+{% macro result_class(result) -%}
+	{%- if result.rtype == 'problem' -%}
+		{%- if result.rvalue.type == 'fail' -%}
+			important
+		{%- else -%}
+			warning
+		{%- endif -%}
+	{%- elif result.rtype == 'build' -%}
+		success
+	{%- else -%}
+		default
+	{%- endif -%}
+{%- endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>{% block basetitle %}AurBS :: {% endblock %}{% block title %}{% endblock %}</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="description" content="">
+		<meta name="author" content="">
+		<link href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+		<style type="text/css">
+			body {
+				padding-top: 60px;
+			}
+		</style>
+		<link href="{{ url_for('static', filename='bootstrap/css/bootstrap-responsive.min.css') }}" rel="stylesheet">
+		<link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+
+		<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+		<!--[if lt IE 9]>
+			<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+		<![endif]-->
+	</head>
+	<body>
+		{% block javascript %}
+		<!--
+		<script src="{{ url_for('static', filename='js/jquery.min.js') }}" type="text/javascript" charset="utf-8"></script>
+		<script src="{{ url_for('static', filename='bootstrap/js/bootstrap.min.js') }}" type="text/javascript" charset="utf-8"></script>
+		<script type="text/javascript">
+		$(document).ready(function() {
+			$('[data-toggle=tooltip]').tooltip();
+		});
+		</script>
+		-->
+		{% endblock %}
+
+		<div class="navbar navbar-inverse navbar-fixed-top">
+			<div class="navbar-inner">
+				<div class="container">
+					<a class="brand" href="/">AurBS</a>
+					<div class="">
+						<ul class="nav">
+							{{ navlink('index', 'Home') }} 
+							{{ navlink('status', 'Status monitor') }} 
+							{{ navlink('problems', 'Problems') }} 
+							{{ navlink('package_list', 'Packages', ['package_view']) }}
+							<li><a href="http://github.com/asdil12/aurbs">Source</a></li>
+						</ul>
+						<form class="navbar-form pull-right" action="{{ url_for('package_list') }}" method="GET">
+							<input class="search-query" type="text" name="query" value="{{ request.args.get('query', '') }}" placeholder="Search" />
+							<input type="submit" style="display: none;" />
+						</form>
+					</div><!--/.nav-collapse -->
+				</div>
+			</div>
+		</div>
+
+		<div class="container">
+		{% block messages %}
+			{% with messages = get_flashed_messages(with_categories=true) %}
+			{% if messages %}
+				<div class="flashes" style="position: relative;">
+				{% for category, message in messages %}
+					<div style="position: absolute; right: 0;" class="alert alert-{{ category }}"><strong>{{ category.title() }}: </strong>{{ message|safe }}</div>
+				{% endfor %}
+				</div>
+				<script type="text/javascript">
+					window.onload=function(){
+						$('.alert').delay(2 * 1000).fadeOut();
+					};
+				</script>
+			{% endif %}
+			{% endwith %}
+		{% endblock %}
+		{% block container %}
+			<!-- Main hero unit for a primary marketing message or call to action -->
+			<div class="hero-unit">
+				<h1>Aur Build System</h1>
+				<p>Automatic AUR package building.</p>
+			</div>
+		{% endblock %}
+		</div>
+	</body>
+</html>

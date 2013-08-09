@@ -1,4 +1,5 @@
 - pacman -S devtools python-distribute python-simplejson python-yaml python-pymongo pyalpm
+- yaourt -S python-itsdangerous-git python-werkzeug-git python-flask-git
 - run `init.py` to create directory structure
 - set PACKAGER in `/etc/makepkg.conf`
 - modify `/etc/aurbs.yml` to define you pkgs and archs

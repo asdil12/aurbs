@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Packages{% endblock %}
+
+{% block container %}
+	<table class="table table-striped">
+		<tr>
+			<th>Name</th>
+			<th style="width: 5%;">Version</th>
+			<th>Votes</th>
+			<th>Description</th>
+			<th>Arch</th>
+		</tr>
+	{% for pkg in pkgs %}
+		<tr>
+			<td><a href="{{ url_for('package_view', pkgname=pkg.name) }}">{{ pkg.name }}</a></td>
+			<td>{{ pkg.version }}</td>
+			<td>{{ pkg.votes }}</td>
+			<td>{{ pkg.description|truncate(60, end='…')|replace(' …', '…', 1) }}</td>
+			<td>{{ ", ".join(pkg.arch) }}</td>
+		</tr>
+	{% endfor %}
+	</table>
+{% endblock %}

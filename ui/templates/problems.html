@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}Problems{% endblock %}
+
+{% block container %}
+	<h3>Failed packages</h3>
+	<table class="table table-striped">
+		<tr>
+			<th style="width: 8em;">Name</th>
+			<th style="width: 9em;">Time</th>
+			<th style="width: 5%;">Version</th>
+			<th>Description</th>
+			<th style="width: 5%;">Arch</th>
+		</tr>
+	{% for pkg in pkgs_failed %}
+		<tr>
+			<td><a href="{{ url_for('package_view', pkgname=pkg.name) }}">{{ pkg.name }}</a></td>
+			<td style="white-space: nowrap;">{{ pkg.date|datetimeformat }}</td>
+			<td>{{ pkg.version }}</td>
+			<td>{{ pkg.description|truncate(60, end='…')|replace(' …', '…', 1) }}</td>
+			<td>{{ pkg.arch }}</td>
+		</tr>
+	{% endfor %}
+	</table>
+
+	<h3>Packages not found in AUR</h3>
+	<table class="table table-striped">
+		<tr>
+			<th style="width: 8em;">Name</th>
+			<th>Time</th>
+			<th style="width: 5%;">Arch</th>
+		</tr>
+	{% for pkg in pkgs_notinaur %}
+		<tr>
+			<td><a href="{{ url_for('package_view', pkgname=pkg.name) }}">{{ pkg.name }}</a></td>
+			<td style="white-space: nowrap;">{{ pkg.date|datetimeformat }}</td>
+			<td>{{ pkg.arch }}</td>
+		</tr>
+	{% endfor %}
+	</table>
+
+	<h3>Blocked packages (missing dependencies)</h3>
+	<table class="table table-striped">
+		<tr>
+			<th style="width: 8em;">Name</th>
+			<th style="width: 9em;">Time</th>
+			<th>Missing dependencies</th>
+			<th style="width: 5%;">Arch</th>
+		</tr>
+	{% for pkg in pkgs_depmiss %}
+		<tr>
+			<td><a href="{{ url_for('package_view', pkgname=pkg.name) }}">{{ pkg.name }}</a></td>
+			<td style="white-space: nowrap;">{{ pkg.date|datetimeformat }}</td>
+			<td>{{ ", ".join(pkg.depends) }}</td>
+			<td>{{ pkg.arch }}</td>
+		</tr>
+	{% endfor %}
+	</table>
+
+	<h3>Blocked packages (blocked dependencies)</h3>
+	<table class="table table-striped">
+		<tr>
+			<th style="width: 8em;">Name</th>
+			<th style="width: 9em;">Time</th>
+			<th>Blocked dependencies</th>
+			<th style="width: 5%;">Arch</th>
+		</tr>
+	{% for pkg in pkgs_blocked %}
+		<tr>
+			<td><a href="{{ url_for('package_view', pkgname=pkg.name) }}">{{ pkg.name }}</a></td>
+			<td style="white-space: nowrap;">{{ pkg.date|datetimeformat }}</td>
+			<td>{{ ", ".join(pkg.depends) }}</td>
+			<td>{{ pkg.arch }}</td>
+		</tr>
+	{% endfor %}
+	</table>
+{% endblock %}

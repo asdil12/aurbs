@@ -157,8 +157,6 @@ def check_pkg(pkgname, arch, do_build=False):
 
 	log.debug("Inquiring local pkg: %s" % pkgname)
 
-	#FIXME: also handle Exceptions via FatalError
-	# and see if args.strict is set
 	try:
 		pkg_aur = aur.get_pkg(pkgname)
 	except:
@@ -172,6 +170,7 @@ def check_pkg(pkgname, arch, do_build=False):
 	try:
 		try:
 			pkg_local = db.get_pkg(pkgname)
+			#FIXME: refresh votes from pkg_aur
 			src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
 			if not os.path.exists(src_pkg):
 				log.warning("AUR-PKG '%s' src-pkg not found --> syncing" % pkgname)

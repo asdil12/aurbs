@@ -275,6 +275,8 @@ db = Database()
 
 webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
 
+batch_mode = not (args.arch or args.pkg)
+
 try:
 	for arch in AurBSConfig().architectures if not args.arch else [args.arch]:
 		log.info("Building for architecture %s" % arch)
@@ -291,7 +293,7 @@ try:
 		subprocess.check_call(["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
-			if not args.arch and not args.pkg:
+			if batch_mode:
 				#TODO: write status page (and status log - check_pkg return...)
 				pkgs_scheduled = [e for e in filter(lambda i: i not in pkg_checked, AurBSConfig().aurpkgs)]
 				try:
@@ -301,12 +303,11 @@ try:
 				pkgs_done = [e for e in pkg_checked.keys()]
 				db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
 			res = check_pkg(pkg, arch, args.force or args.forceall)
-		if not args.arch and not args.pkg:
+		if batch_mode:
 			pkgs_done = [e for e in pkg_checked.keys()]
 			db.set_status(scheduled=[], done=pkgs_done, arch=arch)
 			#TODO: Depete all files and db entries, that are not in AurBSConfig().aurpkgs (issue #4)
-			#TODO: Publish repo
-			pass
+			#TODO: Publish repo: rsync all pkg.tar.xz files, rebuild repo db with correct repo name
 except FatalError as e:
 	log.error("Fatal Error: %s" % e)
 	sys.exit(1)

@@ -2,6 +2,11 @@
 
 {% block title %}Packages{% endblock %}
 
+{% block path %}
+	{{ super () }}
+	{{ bclink('package_list', 'Packages') }}
+{% endblock %}
+
 {% block container %}
 	<table class="table table-striped">
 		<tr>

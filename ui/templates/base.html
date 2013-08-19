@@ -1,11 +1,14 @@
-{% macro navlink(endpoint,text,subendpoints=[]) %}
+{%- macro bclink(endpoint,text,args={}) -%}
+	<li><span class="divider">/</span> <a href="{{ url_for(endpoint, **args) }}">{{ text }}</a></li>
+{%- endmacro -%}
+{%- macro navlink(endpoint,text,subendpoints=[]) -%}
     {%- if request.endpoint.endswith(endpoint) or request.endpoint in subendpoints %}
         <li class='active'><a href='{{url_for(endpoint)}}'>{{text}}</a></li>
     {% else %}
         <li><a href='{{url_for(endpoint)}}'>{{text}}</a></li>
     {%- endif %}
-{% endmacro %}
-{% macro result_title(result) -%}
+{%- endmacro -%}
+{%- macro result_title(result) -%}
 	{%- if result.rtype == 'problem' -%}
 		{%- if result.rvalue.type == 'missing_depends' -%}
 			Missing dependencies: {{ ', '.join(result.rvalue.depends) }}
@@ -17,8 +20,8 @@
 	{%- elif result.rtype == 'build' -%}
 		Release: {{ result.rvalue.release }}
 	{%- endif -%}
-{%- endmacro %}
-{% macro result_name(result) -%}
+{%- endmacro -%}
+{%- macro result_name(result) -%}
 	{%- if result.rtype == 'problem' -%}
 		{%- if result.rvalue.type == 'fail' -%}
 			Failed
@@ -31,11 +34,13 @@
 		{%- endif -%}
 	{%- elif result.rtype == 'build' -%}
 		Built
-	{%- else -%}
+	{%- elif result.rtype == 'building' -%}
+		Building
+	{%- elif result.rtype == 'scheduled' -%}
 		Scheduled
 	{%- endif -%}
-{%- endmacro %}
-{% macro result_class(result) -%}
+{%- endmacro -%}
+{%- macro result_class(result) -%}
 	{%- if result.rtype == 'problem' -%}
 		{%- if result.rvalue.type == 'fail' -%}
 			important
@@ -44,10 +49,21 @@
 		{%- endif -%}
 	{%- elif result.rtype == 'build' -%}
 		success
+	{%- elif result.rtype == 'building' -%}
+		info
 	{%- else -%}
 		default
 	{%- endif -%}
-{%- endmacro %}
+{%- endmacro -%}
+{%- macro result_log_link(result) -%}
+	{%- if result.rtype == 'problem' -%}
+		{%- if result.rvalue.type == 'fail' -%}
+			href="{{ url_for('package_log', pkgname=result.rvalue.name, build_arch=result.rvalue.build_arch) }}"
+		{%- endif -%}
+	{%- elif result.rtype in ['build', 'building'] -%}
+		href="{{ url_for('package_log', pkgname=result.rvalue.name, build_arch=result.rvalue.build_arch) }}"
+	{%- endif -%}
+{%- endmacro -%}
 <!DOCTYPE html>
 <html lang="en">
 	<head>
@@ -92,7 +108,7 @@
 							{{ navlink('index', 'Home') }} 
 							{{ navlink('status', 'Status monitor') }} 
 							{{ navlink('problems', 'Problems') }} 
-							{{ navlink('package_list', 'Packages', ['package_view']) }}
+							{{ navlink('package_list', 'Packages', ['package_view', 'package_log']) }}
 							<li><a href="http://github.com/asdil12/aurbs">Source</a></li>
 						</ul>
 						<form class="navbar-form pull-right" action="{{ url_for('package_list') }}" method="GET">
@@ -105,6 +121,10 @@
 		</div>
 
 		<div class="container">
+			<ul class="breadcrumb">
+				<li><a href="{{ url_for('index') }}">AurBS</a></li>
+				{% block path %}{% endblock %}
+			</ul>
 		{% block messages %}
 			{% with messages = get_flashed_messages(with_categories=true) %}
 			{% if messages %}

@@ -2,6 +2,11 @@
 
 {% block title %}Status{% endblock %}
 
+{% block path %}
+	{{ super () }}
+	{{ bclink('status', 'Status') }}
+{% endblock %}
+
 {% block container %}
 	<script type="text/javascript">
 		var status = {{ status|tojson }};

@@ -2,6 +2,12 @@
 
 {% block title %}{{ pkg.name }}{% endblock %}
 
+{% block path %}
+	{{ super () }}
+	{{ bclink('package_list', 'Packages') }}
+	{{ bclink('package_view', pkg.name, args={'pkgname': pkg.name}) }}
+{% endblock %}
+
 {% block container %}
 	<div class="row">
 		<div class="span12">
@@ -68,8 +74,8 @@
 							<th style="width: 60%;">Result</th>
 					{% for arch, result in results.items() %}
 						<tr>
-							<td title="{{ 'Built on %s'|format(result.rvalue.build_arch) if arch == 'any' and result.rvalue }}">{{ arch }}</td>
-							<td style="text-align: center;" title="{{ result_title(result) }}"><span class="label label-{{ result_class(result) }}" style="width: 90%;">{{ result_name(result) }}</span></td>
+							<td title="{{ 'Build arch: %s'|format(result.rvalue.build_arch) if arch == 'any' and result.rvalue }}">{{ arch }}</td>
+							<td style="text-align: center;" title="{{ result_title(result) }}"><a class="label label-{{ result_class(result) }} resultlabel" {{ result_log_link(result) }}>{{ result_name(result) }}</a></td>
 						</tr>
 					{% endfor %}
 					</table>

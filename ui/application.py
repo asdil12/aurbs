@@ -2,7 +2,7 @@
 
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '..'))
 from aurbs import dummy
@@ -60,17 +60,24 @@ def package_list():
 
 @app.route("/packages/<pkgname>")
 def package_view(pkgname):
-	if pkgname not in AurBSConfig().aurpkgs:
-		pass
-		#return "package not found"
 	try:
 		pkg = db.get_pkg(pkgname)
 	except KeyError:
 		pkg = dummy.aurpkg(pkgname)
+	building_arch = None
+	try:
+		status = db.get_status()
+		if status['building'] == pkgname:
+			building_arch = status['arch']
+	except KeyError:
+		pass
 	results = {}
 	builds = {}
 	for arch in pkg['arch']:
-		results[arch] = db.get_result(pkgname, arch)
+		if building_arch == arch or building_arch is not None and arch == 'any':
+			results[arch] = {'rtype': 'building', 'rvalue': {'name': pkgname, 'build_arch': building_arch}}
+		else:
+			results[arch] = db.get_result(pkgname, arch)
 		results[arch] = {'rtype': 'scheduled'} if not results[arch] else results[arch]
 		try:
 			builds[arch] = find_pkg_files(pkgname, os.path.join(AurBSConfig()['public_repo']['local_path'], arch))[0]
@@ -79,6 +86,35 @@ def package_view(pkgname):
 	local_depends = filter_dependencies([pkg['depends']], local=True)
 	required_by = db.get_pkg_required_by(pkgname)
 	return render_template("package_view.html", pkg=pkg, results=results, local_depends=local_depends, required_by=required_by, builds=builds, repo_url=AurBSConfig()['public_repo']['http_url'])
+
+@app.route("/packages/<pkgname>/<build_arch>/log")
+def package_log(pkgname, build_arch):
+	try:
+		pkg = db.get_pkg(pkgname)
+	except KeyError:
+		return "pkg not found"
+	try:
+		status = db.get_status()
+		if status['building'] == pkgname and status['arch'] == build_arch:
+			building = True
+		else:
+			building = False
+	except:
+		building = False
+	return render_template("package_log.html", pkg=pkg, build_arch=build_arch, building=building)
+
+@app.route("/packages/<pkgname>/<build_arch>/log.txt")
+def package_log_txt(pkgname, build_arch):
+	try:
+		pkg = db.get_pkg(pkgname)
+	except KeyError:
+		return "pkg not found"
+	logfile = os.path.join(build_dir(build_arch), pkgname, "makepkg.log")
+	if os.path.exists(logfile):
+		logstr = open(logfile, 'rb').read()
+		return Response(logstr, content_type="text/plain", direct_passthrough=True)
+	else:
+		return "log not found"
 
 if __name__ == '__main__':
 	try:

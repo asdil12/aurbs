@@ -126,10 +126,12 @@ def make_pkg(pkgname, arch):
 		PKGBUILD.write("pkgrel=%s\n" % pkgrel)
 
 	try:
-		# FIXME:
-		# only use the log from subprocess:
-		# stdout=open("/tmp/l.log", 'w'), stderr=subprocess.STDOUT
-		subprocess.check_call(['makechrootpkg', '-cu', '-l', 'build', '-C', ccache_dir(arch), '-r', chroot(arch), '--', '--noprogressbar'], cwd=build_dir_pkg)
+		subprocess.check_call(
+			['makechrootpkg', '-cu', '-l', 'build', '-d', "%s:/build/.ccache" %  ccache_dir(arch), '-r', chroot(arch), '--', '--noprogressbar'],
+			cwd=build_dir_pkg,
+			stdout=open(os.path.join(build_dir_pkg, "makepkg.log"), 'w'),
+			stderr=subprocess.STDOUT
+		)
 		for item in find_pkg_files(pkgname, build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.info("Publishing pkg '%s'" % item)
@@ -301,11 +303,15 @@ try:
 				except:
 					pass # already build as dependency
 				pkgs_done = [e for e in pkg_checked.keys()]
-				db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
+			else:
+				pkgs_scheduled = []
+				pkgs_done = []
+			db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
 			res = check_pkg(pkg, arch, args.force or args.forceall)
+		pkgs_done = [e for e in pkg_checked.keys()] if batch_mode else [pkg]
+		db.set_status(scheduled=[], done=pkgs_done, arch=arch)
 		if batch_mode:
-			pkgs_done = [e for e in pkg_checked.keys()]
-			db.set_status(scheduled=[], done=pkgs_done, arch=arch)
+			pass
 			#TODO: Depete all files and db entries, that are not in AurBSConfig().aurpkgs (issue #4)
 			#TODO: Publish repo: rsync all pkg.tar.xz files, rebuild repo db with correct repo name
 except FatalError as e:

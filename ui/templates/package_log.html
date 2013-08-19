@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ pkg.name }}{% endblock %}
+
+{% block path %}
+	{{ super () }}
+	{{ bclink('package_list', 'Packages') }}
+	{{ bclink('package_view', pkg.name, args={'pkgname': pkg.name}) }}
+	{{ bclink('package_log', 'Log', args={'pkgname': pkg.name, 'build_arch': build_arch}) }}
+{% endblock %}
+
+{% block javascript %}
+{{ super() }}
+<script src="{{ url_for('static', filename='js/ansispan.js') }}" type="text/javascript" charset="utf-8"></script>
+<script type="text/javascript">
+
+var building = {{ 'true' if building else 'false' }};
+var logbuffer;
+
+function display_log(logstr) {
+	var html = ansispan(logstr);
+	$("#console").html(html);
+}
+
+
+$(document).ready(function() {
+	if(building) {
+		pass = 1;
+	}
+	else {
+		$.ajax({
+			url : "{{ url_for('package_log_txt', pkgname=pkg.name, build_arch=build_arch) }}",
+			dataType: "text",
+			success : function(data) {
+				display_log(data);
+				$("#console").removeClass('loading');
+			}
+		});
+	}
+});
+
+</script>
+
+{% endblock %}
+
+{% block container %}
+	<div class="row">
+		<div class="span12">
+			<div class="row">
+				<div class="span9">
+					<h1>{{ pkg.name }} {{ pkg.version if pkg.version != 'n/a' }} :: {{ build_arch }}</h1>
+				</div>
+			</div>
+			<div class="row">
+				<span class="span12">
+					<pre class="loading" id="console"></pre>
+				</span>
+			</div>
+		</div>
+	</div>
+{% endblock %}

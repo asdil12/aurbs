@@ -67,7 +67,7 @@ ansispan.foregroundColors = {
   '31': '#bd362f', // red
   '32': '#51a351', // green
   '33': '#f89406', // yellow
-  '34': '#f89406', // blue
+  '34': '#0044cc', // blue
   '35': 'purple',
   '36': '#2f96b4', // cyan
   '37': 'white'

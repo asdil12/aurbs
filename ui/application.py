@@ -2,7 +2,7 @@
 
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '..'))
 from aurbs import dummy
@@ -111,8 +111,20 @@ def package_log_txt(pkgname, build_arch):
 		return "pkg not found"
 	logfile = os.path.join(build_dir(build_arch), pkgname, "makepkg.log")
 	if os.path.exists(logfile):
-		logstr = open(logfile, 'rb').read()
-		return Response(logstr, content_type="text/plain", direct_passthrough=True)
+		seek = int(request.args.get('seek', -1))
+		f = open(logfile, 'rb')
+		if seek != -1:
+			f.seek(seek)
+			add_etags = False
+			conditional = False
+			cache_timeout = 1
+		else:
+			add_etags = True
+			conditional = True
+			cache_timeout  = None
+		#logstr = f.read()
+		#return Response(logstr, content_type="text/plain", direct_passthrough=True)
+		return send_file(f, mimetype="text/plain", add_etags=add_etags, conditional=conditional, cache_timeout=cache_timeout)
 	else:
 		return "log not found"
 

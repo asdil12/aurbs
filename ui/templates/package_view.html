@@ -72,7 +72,7 @@
 						<tr>
 							<th>Arch</th>
 							<th style="width: 60%;">Result</th>
-					{% for arch, result in results.items() %}
+					{% for arch, result in results|dictsort %}
 						<tr>
 							<td title="{{ 'Build arch: %s'|format(result.rvalue.build_arch) if arch == 'any' and result.rvalue }}">{{ arch }}</td>
 							<td style="text-align: center;" title="{{ result_title(result) }}"><a class="label label-{{ result_class(result) }} resultlabel" {{ result_log_link(result) }}>{{ result_name(result) }}</a></td>

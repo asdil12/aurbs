@@ -39,7 +39,12 @@
 			});
 
 			if(status.building) {
-				$('#building').text(status.building)
+				building = $('#building')
+				building.empty()
+				var a = $('<a/>')
+					.attr('href', '/packages/'+status.building+'/'+status.arch+'/log')
+					.text(status.building)
+					.appendTo(building);
 			}
 			else {
 				$('#building').empty()

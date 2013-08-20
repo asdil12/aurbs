@@ -53,13 +53,18 @@ var ansispan = function (str) {
   //
   str = str.replace(/\033\[3m/g, '<span style="font-style: italic;>').replace(/\033\[23m/g, '</span>');
 
-  str = str.replace(/\033\[m/g, '</span>');
-  str = str.replace(/\033\[0m/g, '</span>');
+  // this is ugly as hell and not xhtml, but it works
+  // the browser will close my tags until parent pre close
+  // contact me with better ideas...
+  exitstr = '<span style="color: #333; font-weight: normal; font-style: normal;">'
+
+  str = str.replace(/\033\[m/g, exitstr);
+  str = str.replace(/\033\[0m/g, exitstr);
 
   // universal reset
-  str = str.replace(/\033\(B/g, '</span>');
+  str = str.replace(/\033\(B/g, exitstr);
 
-  return str.replace(/\033\[39m/g, '</span>');
+  return str.replace(/\033\[39m/g, exitstr);
 };
 
 ansispan.foregroundColors = {

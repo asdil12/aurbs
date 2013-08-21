@@ -19,7 +19,9 @@ var pkgname = "{{ pkg.name }}";
 var build_arch = "{{ build_arch }}";
 var logbuffer = "";
 var refreshing = false;
-var autoscroll = true;
+var last = false;
+var autoscroll = {{ 'true' if building else 'false' }};
+var livelog = {{ 'true' if building else 'false' }};
 
 function scrollto(offset=0){
 	$("html, body").animate({ scrollTop: $(document).height()-$(window).height()+offset });
@@ -33,7 +35,7 @@ function display_log(logstr) {
 			scrollto(-30);
 		}
 		else {
-			//scrollto(0);
+			scrollto(0);
 		}
 	}
 }
@@ -46,7 +48,7 @@ function refresh_done() {
 function get_log(set_done=false) {
 	if(!refreshing) {
 		refreshing = true;
-		var seek_param = set_done?"":"?seek=" + logbuffer.length;
+		var seek_param = livelog?"?seek=" + logbuffer.length:"";
 		$.ajax({
 			url: "{{ url_for('package_log_txt', pkgname=pkg.name, build_arch=build_arch) }}" + seek_param,
 			dataType: "text",
@@ -54,9 +56,10 @@ function get_log(set_done=false) {
 				if(data.length > 0) {
 					logbuffer += data;
 					display_log(logbuffer);
-					if(set_done) {
-						refresh_done();
-					}
+				}
+				if(set_done) {
+					refresh_done();
+					last = true;
 				}
 			},
 			complete: function() {
@@ -73,13 +76,16 @@ $(document).ready(function() {
 			if(building) {
 				$.getJSON('{{ url_for('status_json') }}', function(status) {
 					if(status.building != pkgname || status.arch != build_arch) {
-						refresh_done();
-						if(autoscroll) {
-							scrollto(0);
-						}
+						building = false;
 					}
 				});
 				get_log();
+			}
+			else if(!last) {
+				while(refreshing) {
+					var foo = 1;
+				}
+				get_log(true);
 			}
 		}, 5000);
 	}

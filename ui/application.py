@@ -77,10 +77,10 @@ def package_view(pkgname):
 		if building_arch == arch or building_arch is not None and arch == 'any':
 			results[arch] = {'rtype': 'building', 'rvalue': {'name': pkgname, 'build_arch': building_arch}}
 		else:
-			results[arch] = db.get_result(pkgname, arch)
+			results[arch] = db.get_result(pkgname, build_arch=arch)
 		results[arch] = {'rtype': 'scheduled'} if not results[arch] else results[arch]
 		try:
-			builds[arch] = find_pkg_files(pkgname, os.path.join(AurBSConfig()['public_repo']['local_path'], arch))[0]
+			builds[arch] = find_pkg_files(pkgname, directory=os.path.join(AurBSConfig()['public_repo']['local_path'], arch))[0]
 		except (IndexError, FileNotFoundError):
 			pass
 	local_depends = filter_dependencies([pkg['depends']], local=True)

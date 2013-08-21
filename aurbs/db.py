@@ -103,20 +103,20 @@ class Database(object):
 					"version": pkg['version']
 				})
 		try:
-			setr = self.get_result(pkgname, build_arch, rtype)
+			setr = self.get_result(pkgname, build_arch=build_arch, rtype=rtype)
 			self._db["%ss" % rtype].update({'_id': setr['_id']}, setv)
 		except KeyError:
 			setr = self._db["%ss" % rtype].insert(setv)
 
-	def get_result(self, pkgname, build_arch, rtype=None):
-		# arch via pkg from db
+	def get_result(self, pkgname, build_arch=None, arch=None, rtype=None):
 		# rtype = problem | build
-		try:
-			pkg = self.get_pkg(pkgname)
-			arch = "any" if pkg['arch'][0] == "any" else build_arch
-		except KeyError:
-			pkg = dummy.aurpkg(pkgname)
-			arch = build_arch
+		if not arch:
+			try:
+				pkg = self.get_pkg(pkgname)
+				# arch via pkg from db
+				arch = "any" if pkg['arch'][0] == "any" else build_arch
+			except KeyError:
+				arch = build_arch
 		if rtype:
 			rvalue = self._db["%ss" % rtype].find_one({'name': pkgname, 'arch': arch})
 			if not rvalue:
@@ -177,3 +177,15 @@ class Database(object):
 			except KeyError:
 				pass
 		return pkgs
+
+	def cleanup_orphaned(self):
+		# cleanup pkgs and results, that are not in AurBSConfig().aurpkgs
+		for pkg in self._db.packages.find({}):
+			if pkg['name'] not in AurBSConfig().aurpkgs:
+				self._db.packages.remove({'name': pkg['name']})
+				log.info("Cleanup orphaned db pkg-entry: %s" % pkg['name'])
+		for rtype in ['build', 'problem']:
+			for result in self.get_results(rtype):
+				if result['name'] not in AurBSConfig().aurpkgs:
+					self._db["%ss" % rtype].remove({'name': result['name']})
+					log.info("Cleanup orphaned db result-entry: %s" % result['name'])

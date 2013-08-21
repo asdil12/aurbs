@@ -50,7 +50,7 @@ def publish_pkg(pkgname, arch, version):
 
 	# Delete old file from repo and repodb
 	for repo_arch in repo_archs:
-		for item in find_pkg_files(pkgname, repodir(repo_arch)):
+		for item in find_pkg_files(pkgname, directory=repodir(repo_arch)):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.debug("Removing '%s' from %s repo db" % (ipkgname, repo_arch))
 			try:
@@ -58,7 +58,7 @@ def publish_pkg(pkgname, arch, version):
 			except OSError:
 				pass
 			os.remove(os.path.join(repodir(repo_arch), item))
-	for item in find_pkg_files(pkgname, repodir('any')):
+	for item in find_pkg_files(pkgname, directory=repodir('any')):
 		os.remove(os.path.join(repodir('any'), item))
 
 	# Prevent old pkg being cached
@@ -84,14 +84,14 @@ def make_pkg(pkgname, arch):
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=True):
 		try:
-			dep_build = db.get_result(dep, arch, 'build')
+			dep_build = db.get_result(dep, build_arch=arch, rtype='build')
 			deps.append({'name': dep, 'version': dep_build['version'], 'release': dep_build['release']})
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 
 	# Compute new release
 	try:
-		build = db.get_result(pkgname, arch, 'build')
+		build = db.get_result(pkgname, build_arch=arch, rtype='build')
 		if version_newer(build['version'], pkg['version']):
 			release = 1
 		else:
@@ -108,7 +108,7 @@ def make_pkg(pkgname, arch):
 	try:
 		os.mkdir(build_dir_pkg)
 	except FileExistsError:
-		for filename in find_pkg_files(pkgname, build_dir_pkg):
+		for filename in find_pkg_files(pkgname, directory=build_dir_pkg):
 			os.remove(os.path.join(build_dir_pkg, filename))
 		for filename in os.listdir(build_dir_pkg):
 			if filename.endswith('.log'):
@@ -132,7 +132,7 @@ def make_pkg(pkgname, arch):
 			stdout=open(os.path.join(build_dir_pkg, "makepkg.log"), 'w'),
 			stderr=subprocess.STDOUT
 		)
-		for item in find_pkg_files(pkgname, build_dir_pkg):
+		for item in find_pkg_files(pkgname, directory=build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.info("Publishing pkg '%s'" % item)
 			ver_publish = '%s-%s' % (ipkgver, ipkgrel)
@@ -189,7 +189,7 @@ def check_pkg(pkgname, arch, do_build=False):
 
 	# Check against previous build
 	try:
-		pkg_build = db.get_result(pkgname, arch, 'build')
+		pkg_build = db.get_result(pkgname, build_arch=arch, rtype='build')
 		# Check version changed
 		if version_newer(pkg_build['version'], pkg_local['version']):
 			log.warning("AUR-PKG '%s' outdated build --> rebuilding" % pkgname)
@@ -244,7 +244,7 @@ def check_pkg(pkgname, arch, do_build=False):
 		elif not do_build and not pkg_local['arch'][0] == 'any':
 			# pkg_build IS set here - otherwise do_build would be true
 			dep_build_release_link = by_name(pkg_build['linkdepends'], dep)['release']
-			dep_build_release_available = db.get_result(dep, arch, 'build')['release']
+			dep_build_release_available = db.get_result(dep, build_arch=arch, rtype='build')['release']
 			if dep_build_release_link < dep_build_release_available:
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True
@@ -275,11 +275,34 @@ AurBSConfig(args.config)
 # Create database connection
 db = Database()
 
-webserver = WebServer('/var/lib/aurbs/aurstaging', 8024)
+webserver = WebServer(repodir(""), 8024)
 
 batch_mode = not (args.arch or args.pkg)
 
 try:
+	if batch_mode:
+		# Delete all db entries (pkgs, problems and builds), that are not in AurBSConfig().aurpkgs
+		db.cleanup_orphaned()
+
+		# Delete all files and (repo) db entries, that have no matching build
+		repo_archs = AurBSConfig().architectures.copy()
+		repo_archs.append("any")
+		for repo_arch in repo_archs:
+			#TODO: also build dirs, etc
+			for item in find_pkg_files(directory=repodir(repo_arch)):
+				item_name = item.rsplit(".", 3)[0]
+				[ipkgname, ipkgver, ipkgrel, iarch] = item_name.rsplit("-", 3)
+				try:
+					ibuild = db.get_result(ipkgname, arch=iarch, rtype='build')
+				except KeyError:
+					os.remove(os.path.join(repodir(repo_arch), item))
+					if repo_arch != "any":
+						try:
+							log.info("Cleanup orphaned pkg-file: %s" % ipkgname)
+							subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
+						except OSError:
+							pass
+
 	for arch in AurBSConfig().architectures if not args.arch else [args.arch]:
 		log.info("Building for architecture %s" % arch)
 
@@ -310,10 +333,9 @@ try:
 			res = check_pkg(pkg, arch, args.force or args.forceall)
 		pkgs_done = [e for e in pkg_checked.keys()] if batch_mode else [pkg]
 		db.set_status(scheduled=[], done=pkgs_done, arch=arch)
-		if batch_mode:
-			pass
-			#TODO: Depete all files and db entries, that are not in AurBSConfig().aurpkgs (issue #4)
-			#TODO: Publish repo: rsync all pkg.tar.xz files, rebuild repo db with correct repo name
+	if batch_mode:
+		pass
+		#TODO: Publish repo: rsync all pkg.tar.xz files, rebuild repo db with correct repo name
 except FatalError as e:
 	log.error("Fatal Error: %s" % e)
 	sys.exit(1)

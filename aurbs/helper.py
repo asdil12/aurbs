@@ -44,12 +44,14 @@ def filter_dependencies(args, local=True, nofilter=False):
 	else:
 		return [d for d in deps if d not in AurBSConfig().aurpkgs]
 
-def find_pkg_files(pkgname, directory):
+def find_pkg_files(pkgname=None, directory=None):
+	if not directory:
+		return []
 	respkgs = []
 	for item in os.listdir(directory):
 		if item.endswith('pkg.tar.xz'):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-			if ipkgname == pkgname:
+			if pkgname is None or ipkgname == pkgname:
 				respkgs.append(item)
 	return respkgs
 

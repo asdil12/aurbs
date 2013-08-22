@@ -308,6 +308,7 @@ try:
 
 		# Create chroot, if missing
 		if not os.path.exists(chroot_root(arch)):
+			log.warning("Creating %s build root" % arch)
 			subprocess.check_call(['mkarchroot',
 				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
 				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
@@ -315,6 +316,7 @@ try:
 				'base-devel', 'ccache', 'git'
 			])
 
+		log.info("Updating %s build root" % arch)
 		subprocess.check_call(["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
@@ -334,8 +336,22 @@ try:
 		pkgs_done = [e for e in pkg_checked.keys()] if batch_mode else [pkg]
 		db.set_status(scheduled=[], done=pkgs_done, arch=arch)
 	if batch_mode:
-		pass
-		#TODO: Publish repo: rsync all pkg.tar.xz files, rebuild repo db with correct repo name
+		log.warning("Publishing repos")
+		subprocess.call([
+			"rsync", "-P", "-rlptgo", "--delete", "--include", "*/", "--include", "*.pkg.tar.*", "--exclude", "*",
+			repodir(""), repodir_public("")
+		])
+		for repo_arch in AurBSConfig().architectures:
+			log.info("Creating %s repo db" % (repo_arch))
+			repodb_name = "%s.db" % AurBSConfig().public_repo['name']
+			repodb_file = os.path.join(repodir_public(repo_arch), '%s.tar.gz' % repodb_name)
+			repodb_link = os.path.join(repodir_public(repo_arch), repodb_name)
+			for filename in os.listdir(repodir_public(repo_arch)):
+				for key in [".db", ".db.old", ".db.tar.gz"]:
+					if filename.endswith(key):
+						os.remove(os.path.join(repodir_public(repo_arch), filename))
+			shutil.copyfile(os.path.join(repodir(arch), 'aurstaging.db.tar.gz'), repodb_file)
+			os.symlink('%s.tar.gz' % repodb_name, repodb_link)
 except FatalError as e:
 	log.error("Fatal Error: %s" % e)
 	sys.exit(1)

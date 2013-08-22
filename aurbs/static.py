@@ -21,6 +21,9 @@ def ccache_dir(arch):
 def repodir(arch):
 	return os.path.join('/var/lib/aurbs/aurstaging', arch)
 
+def repodir_public(arch):
+	return os.path.join('/var/lib/aurbs/public_repo', arch)
+
 def build_db_dir(arch):
 	return os.path.join('/var/lib/aurbs/build_db', arch)
 

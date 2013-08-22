@@ -2,7 +2,7 @@
 
 import os
 import sys
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, send_from_directory
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__) + '/' + '..'))
 from aurbs import dummy
@@ -21,7 +21,12 @@ def datetimeformat(value, format='%Y-%m-%d %H:%M:%S'):
 
 @app.route('/')
 def index():
-	return render_template("base.html")
+	repo_name = AurBSConfig().public_repo['name']
+	try:
+		repo_url = AurBSConfig().public_repo['http_url']
+	except KeyError:
+		repo_url = url_for('public_repo', _external=True)
+	return render_template("base.html", repo_name=repo_name, repo_url=repo_url)
 
 @app.route('/status')
 def status():
@@ -78,14 +83,18 @@ def package_view(pkgname):
 			results[arch] = {'rtype': 'building', 'rvalue': {'name': pkgname, 'build_arch': building_arch}}
 		else:
 			results[arch] = db.get_result(pkgname, build_arch=arch)
-		results[arch] = {'rtype': 'scheduled'} if not results[arch] else results[arch]
+		if not results[arch]:
+			if arch in AurBSConfig().architectures or arch == 'any':
+				results[arch] = {'rtype': 'scheduled'}
+			else:
+				results[arch] = {'rtype': 'disabled'}
 		try:
-			builds[arch] = find_pkg_files(pkgname, directory=os.path.join(AurBSConfig()['public_repo']['local_path'], arch))[0]
+			builds[arch] = find_pkg_files(pkgname, directory=repodir(arch))[0]
 		except (IndexError, FileNotFoundError):
 			pass
 	local_depends = filter_dependencies([pkg['depends']], local=True)
 	required_by = db.get_pkg_required_by(pkgname)
-	return render_template("package_view.html", pkg=pkg, results=results, local_depends=local_depends, required_by=required_by, builds=builds, repo_url=AurBSConfig()['public_repo']['http_url'])
+	return render_template("package_view.html", pkg=pkg, results=results, local_depends=local_depends, required_by=required_by, builds=builds)
 
 @app.route("/packages/<pkgname>/<build_arch>/log")
 def package_log(pkgname, build_arch):
@@ -127,6 +136,24 @@ def package_log_txt(pkgname, build_arch):
 		return send_file(f, mimetype="text/plain", add_etags=add_etags, conditional=conditional, cache_timeout=cache_timeout)
 	else:
 		return "log not found"
+
+@app.route("/aurstaging/<arch>/<pkg>")
+def aurstaging_get(arch, pkg):
+	if arch not in AurBSConfig().architectures and arch != 'any':
+		return "404"
+	else:
+		return send_from_directory(repodir(arch), pkg)
+
+@app.route("/%s/<arch>/<pkg>" % AurBSConfig().public_repo['name'])
+def public_repo_get(arch, pkg):
+	if arch not in AurBSConfig().architectures and arch != 'any':
+		return "invalid arch"
+	else:
+		return send_from_directory(repodir_public(arch), pkg)
+
+@app.route("/%s" % AurBSConfig().public_repo['name'])
+def public_repo():
+	return "no directory listing using internal webserver"
 
 if __name__ == '__main__':
 	try:

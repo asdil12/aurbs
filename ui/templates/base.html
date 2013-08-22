@@ -38,6 +38,8 @@
 		Building
 	{%- elif result.rtype == 'scheduled' -%}
 		Scheduled
+	{%- elif result.rtype == 'disabled' -%}
+		Disabled
 	{%- endif -%}
 {%- endmacro -%}
 {%- macro result_class(result) -%}
@@ -51,8 +53,10 @@
 		success
 	{%- elif result.rtype == 'building' -%}
 		info
-	{%- else -%}
+	{%- elif result.rtype == 'scheduled' -%}
 		default
+	{%- elif result.rtype == 'disabled' -%}
+		inverse
 	{%- endif -%}
 {%- endmacro -%}
 {%- macro result_log_link(result) -%}
@@ -147,6 +151,11 @@
 				<h1>Aur Build System</h1>
 				<p>Automatic AUR package building.</p>
 			</div>
+<pre>
+[{{ repo_name }}]
+SigLevel = Never
+Server = {{ repo_url }}/$arch
+</pre>
 		{% endblock %}
 		</div>
 	</body>

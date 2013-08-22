@@ -40,7 +40,7 @@
 							<td>
 								<ul>
 								{% for arch, build in builds.items() %}
-									<li><a href="{{ repo_url + '/' + arch + '/' + build }}">{{ build }}</a></li>
+									<li><a href="{{ url_for('aurstaging_get', arch=arch, pkg=build, _external=True) }}">{{ build }}</a></li>
 								{% endfor %}
 								</ul>
 							</td>

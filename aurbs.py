@@ -22,6 +22,7 @@ parser = argparse.ArgumentParser(description='AUR Build Service')
 parser.add_argument('pkg', nargs='?', help='Package to build')
 parser.add_argument('--syslog', action='store_true', help='Log to syslog')
 parser.add_argument('-c', '--config', default='/etc/aurbs.yml', help='Set alternative config file')
+parser.add_argument('-C', '--cache', action='store_true', help='Use cached pkg sources')
 parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEBUG')
 parser.add_argument('-s', '--strict', action='store_true', help='Exit on build failures')
 parser.add_argument('-f', '--force', action='store_true', help='Force rebuild')
@@ -113,7 +114,8 @@ def make_pkg(pkgname, arch):
 		for filename in os.listdir(build_dir_pkg):
 			if filename.endswith('.log'):
 				os.remove(os.path.join(build_dir_pkg, filename))
-	subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg)
+	if not args.cache:
+		subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
 	set_chmod(build_dir_pkg, dirs=0o755, files=0o644)

@@ -23,7 +23,7 @@ var last = false;
 var autoscroll = {{ 'true' if building else 'false' }};
 var livelog = {{ 'true' if building else 'false' }};
 
-function scrollto(offset=0){
+function scrollto(offset){
 	$("html, body").animate({ scrollTop: $(document).height()-$(window).height()+offset });
 }
 
@@ -45,7 +45,7 @@ function refresh_done() {
 	$("#console").removeClass('loading');
 }
 
-function get_log(set_done=false) {
+function get_log(set_done) {
 	if(!refreshing) {
 		refreshing = true;
 		var seek_param = livelog?"?seek=" + logbuffer.length:"";
@@ -71,7 +71,7 @@ function get_log(set_done=false) {
 
 $(document).ready(function() {
 	if(building) {
-		get_log();
+		get_log(false);
 		window.setInterval(function() {
 			if(building) {
 				$.getJSON('{{ url_for('status_json') }}', function(status) {
@@ -79,7 +79,7 @@ $(document).ready(function() {
 						building = false;
 					}
 				});
-				get_log();
+				get_log(false);
 			}
 			else if(!last) {
 				while(refreshing) {
@@ -87,7 +87,7 @@ $(document).ready(function() {
 				}
 				get_log(true);
 			}
-		}, 5000);
+		}, 1000);
 	}
 	else {
 		get_log(true);

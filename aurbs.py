@@ -115,7 +115,10 @@ def make_pkg(pkgname, arch):
 			if filename.endswith('.log'):
 				os.remove(os.path.join(build_dir_pkg, filename))
 	if not args.cache:
-		subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg)
+		subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg,
+			stdout=open("/dev/null", 'w'),
+			stderr=subprocess.STDOUT
+		)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
 	set_chmod(build_dir_pkg, dirs=0o755, files=0o644)

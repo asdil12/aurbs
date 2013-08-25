@@ -1,0 +1,40 @@
+server.port             = 80
+server.username         = "http"
+server.groupname        = "http"
+server.document-root    = "/srv/http"
+server.errorlog         = "/var/log/lighttpd/error.log"
+server.breakagelog      = "/var/log/lighttpd/breakage.log"
+dir-listing.activate    = "enable"
+index-file.names        = (  )
+
+include_shell "/usr/share/lighttpd/create-mime.assign.pl"
+#mimetype.assign         = ( ".html" => "text/html", ".txt" => "text/plain", ".jpg" => "image/jpeg", ".png" => "image/png", "" => "application/octet-stream" )
+
+server.modules = (
+	"mod_alias",
+	"mod_rewrite",
+	"mod_fastcgi",
+)
+
+alias.url = (
+	"/aurstaging" => "/var/lib/aurbs/aurstaging/",
+	"/aurbs" => "/var/lib/aurbs/public_repo/"
+)
+
+url.rewrite-once = (
+	"^(/aurstaging.*)$" => "$1",
+	"^(/aurbs.*)$" => "$1",
+	"^(/.*)$" => "/aurbs.fcgi$1"
+)
+
+fastcgi.server = ("/aurbs.fcgi" =>
+	((
+		"socket" => "/tmp/aurbs-fcgi.sock",
+		"bin-path" => "/usr/lib/python3.3/site-packages/aurbs/ui/application.fcgi",
+		"check-local" => "disable",
+		"max-procs" => 1,
+		"fix-root-scriptname" => "enable",
+		"allow-x-send-file" => "enable"
+	))
+)
+

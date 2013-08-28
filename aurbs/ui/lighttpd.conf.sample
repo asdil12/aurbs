@@ -7,8 +7,17 @@ server.breakagelog      = "/var/log/lighttpd/breakage.log"
 dir-listing.activate    = "enable"
 index-file.names        = (  )
 
-include_shell "/usr/share/lighttpd/create-mime.assign.pl"
-#mimetype.assign         = ( ".html" => "text/html", ".txt" => "text/plain", ".jpg" => "image/jpeg", ".png" => "image/png", "" => "application/octet-stream" )
+mimetype.assign         = (
+	".html" => "text/html",
+	".txt"  => "text/plain",
+	".jpg"  => "image/jpeg",
+	".png"  => "image/png",
+	".css"  => "text/css",
+	".js"   => "text/javascript",
+	".xz"   => "application/x-xz",
+	".gz"   => "application/x-gzip",
+	""      => "application/octet-stream"
+)
 
 server.modules = (
 	"mod_alias",

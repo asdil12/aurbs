@@ -39,7 +39,7 @@ url.rewrite-once = (
 fastcgi.server = ("/aurbs.fcgi" =>
 	((
 		"socket" => "/tmp/aurbs-fcgi.sock",
-		"bin-path" => "/usr/lib/python3.3/site-packages/aurbs/ui/application.fcgi",
+		"bin-path" => "/usr/lib/aurbs/aurbs.fcgi",
 		"check-local" => "disable",
 		"max-procs" => 1,
 		"fix-root-scriptname" => "enable",

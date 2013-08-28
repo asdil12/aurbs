@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import shutil
 
 archs = ['i686', 'x86_64']
 
@@ -46,6 +47,11 @@ def mkdir(path):
 		if not e.errno == 17:
 			raise
 
+def copy(src, dst):
+	path = rp(dst)
+	print(path)
+	shutil.copy(src, path)
+
 def chown(path, uid, gid):
 	path = rp(path)
 	print("CHOWN: %s" % path)
@@ -72,8 +78,8 @@ def dummy_repo_db(repo_path):
 		# File exists
 		pass
 
-
-process_template('aurbs.yml.in', 'etc/aurbs.yml', {}, True)
+mkdir('usr/lib/aurbs')
+copy('bin/aurbs.fcgi', 'usr/lib/aurbs/aurbs.fcgi')
 
 mkdir('usr/share/aurbs/cfg')
 mkdir('var/cache/aurbs/srcpkgs')

@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
 	name='aurbs',
-	version='0.8.0',
+	version='0.8.1',
 	license='GPL',
 	description='Automatic AUR package building system',
 	author='Dominik Heidler',

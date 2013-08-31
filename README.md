@@ -1,5 +1,5 @@
-- pacman -S devtools rsync python-setuptools python-simplejson python-yaml python-pymongo pyalpm
-- yaourt -S python-itsdangerous-git python-werkzeug-git python-flask-git python-flup-hg
+- pacman -S devtools rsync python-setuptools python-simplejson python-yaml python-pymongo python-flask pyalpm
+- yaourt -S python-flup-hg
 - run `make install`
 - set PACKAGER in `/etc/makepkg.conf`
 - modify `/etc/aurbs.yml` to define you pkgs and archs

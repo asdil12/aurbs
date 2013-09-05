@@ -279,14 +279,15 @@ def check_pkg(pkgname, arch, do_build=False):
 log.debug("Reading config from '%s'" % args.config)
 AurBSConfig(args.config)
 
-# Create database connection
-db = Database()
 
 webserver = WebServer(repodir(""), 8024)
 
 batch_mode = not (args.arch or args.pkg)
 
 try:
+	# Create database connection
+	db = Database()
+
 	if batch_mode:
 		# Delete all db entries (pkgs, problems and builds), that are not in AurBSConfig().aurpkgs
 		db.cleanup_orphaned()

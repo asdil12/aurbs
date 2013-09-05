@@ -23,6 +23,18 @@ class Database(object):
 	def __init__(self):
 		self._client = MongoClient(AurBSConfig().database['host'], AurBSConfig().database['port'])
 		self._db = self._client[AurBSConfig().database['database']]
+		if AurBSConfig().database.get('user'):
+			try:
+				self._db.authenticate(AurBSConfig().database['user'], AurBSConfig().database['pass'])
+				log.info("Authentificated with database user '%s'" % AurBSConfig().database['user'])
+			except Exception as e:
+				print(e)
+				raise FatalError("Authentification failed with database user '%s'" % AurBSConfig().database['user'])
+		else:
+			try:
+				self._db.collection_names()
+			except:
+				raise FatalError("Database requires authentification")
 		self._db.packages.ensure_index("name", unique=True, dropDups=True)
 		for rtype in ['build', 'problem']:
 			self._db["%ss" % rtype].ensure_index("name")

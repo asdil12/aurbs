@@ -2,6 +2,9 @@ database:
 	host: localhost
 	port: 27017
 	database: aurbs
+	# Only define this, if db requires auth:
+	#user: aurbs
+	#pass: dbpass
 
 public_repo:
 	name: aurbs

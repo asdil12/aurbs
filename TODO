@@ -1,5 +1,0 @@
-- add status page
-- add build log
-- properly provide build logs (subprocess.stdout/err) via webui
-- verify upstream dependency change triggers rebuild
-- add options to package_log page: download log, toggle scrolldown

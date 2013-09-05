@@ -33,7 +33,7 @@ class Database(object):
 		else:
 			try:
 				self._db.collection_names()
-			except:
+			except Exception:
 				raise FatalError("Database requires authentification")
 		self._db.packages.ensure_index("name", unique=True, dropDups=True)
 		for rtype in ['build', 'problem']:
@@ -174,7 +174,7 @@ class Database(object):
 		try:
 			sid = self._db.info.find_one({'type': 'status'})['_id']
 			self._db.info.update({'_id': sid}, status)
-		except:
+		except Exception:
 			self._db.info.insert(status)
 
 	def get_status(self):

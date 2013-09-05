@@ -195,7 +195,7 @@ def parseFile(fileh):
 	for line in fileh:
 		try:
 			line = line.decode("UTF-8")
-		except:
+		except Exception:
 			line = line
 		# remove newlines
 		line = line.rstrip("\r\n")

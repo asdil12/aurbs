@@ -33,7 +33,13 @@
 						</tr>
 						<tr>
 							<th>Maintainer:</th>
-							<td><a href="https://aur.archlinux.org/account/{{ pkg.maintainer}}">{{ pkg.maintainer }}</a></td>
+							<td>
+								{%- if pkg.maintainer -%}
+									<a href="https://aur.archlinux.org/account/{{ pkg.maintainer}}">{{ pkg.maintainer }}</a>
+								{%- else -%}
+									None
+								{%- endif -%}
+							</td>
 						</tr>
 						<tr>
 							<th>Builds:</th>

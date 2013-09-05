@@ -177,7 +177,6 @@ def check_pkg(pkgname, arch, do_build=False):
 	try:
 		try:
 			pkg_local = db.get_pkg(pkgname)
-			#FIXME: refresh votes from pkg_aur
 			src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
 			if not os.path.exists(src_pkg):
 				log.warning("AUR-PKG '%s' src-pkg not found --> syncing" % pkgname)
@@ -188,6 +187,9 @@ def check_pkg(pkgname, arch, do_build=False):
 		if version_newer(pkg_local['version'], pkg_aur['version']):
 			log.warning("AUR-PKG '%s' outdated in local db --> resyncing" % pkgname)
 			raise
+		else:
+			# Refresh pkg details
+			db.update_pkg(pkgname, pkg_aur)
 	except:
 		db.sync_pkg(pkgname)
 		pkg_local = db.get_pkg(pkgname)

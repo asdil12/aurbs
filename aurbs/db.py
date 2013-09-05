@@ -51,6 +51,9 @@ class Database(object):
 		if not self._db.packages.update({"name": pkgname}, {"$set": pkg})['n']:
 			self._db.packages.insert(pkg)
 
+	def update_pkg(self, pkgname, pkg):
+		self._db.packages.update({"name": pkgname}, {"$set": pkg})
+
 	def _cleanup_results(self, pkgname):
 		# cleanup non-matching results (any-results for i686-x86_64 pkg)
 		try:

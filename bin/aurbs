@@ -14,13 +14,16 @@ from aurbs.config import AurBSConfig
 from aurbs.db import Database
 from aurbs.webserver import WebServer
 from aurbs.model import Dependency, FatalError
+from aurbs import subproc
 
 from aurbs.static import *
 from aurbs.helper import *
 
 def signal_handler(signal, frame):
 	sys.exit(128 + signal)
+
 signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 parser = argparse.ArgumentParser(description='AUR Build Service')
 parser.add_argument('pkg', nargs='?', help='Package to build')
@@ -59,7 +62,7 @@ def publish_pkg(pkgname, arch, version):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.debug("Removing '%s' from %s repo db" % (ipkgname, repo_arch))
 			try:
-				subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
+				subproc.ccall(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
 			except OSError:
 				pass
 			os.remove(os.path.join(repodir(repo_arch), item))
@@ -75,7 +78,7 @@ def publish_pkg(pkgname, arch, version):
 		if arch_publish == 'any':
 			os.symlink(os.path.join('..', arch_publish, filename), os.path.join(repodir(repo_arch), filename))
 		log.debug("Adding '%s' to %s repo db" % (filename, repo_arch))
-		subprocess.check_call(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir(repo_arch))
+		subproc.ccall(['repo-add', 'aurstaging.db.tar.gz', filename], cwd=repodir(repo_arch))
 
 def make_pkg(pkgname, arch):
 	pkg = db.get_pkg(pkgname)
@@ -119,9 +122,10 @@ def make_pkg(pkgname, arch):
 			if filename.endswith('.log'):
 				os.remove(os.path.join(build_dir_pkg, filename))
 	if not args.cache:
-		subprocess.check_call(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg,
+		subproc.ccall(['bsdtar', '--strip-components', '1', '-xvf', src_pkg], cwd=build_dir_pkg,
 			stdout=open("/dev/null", 'w'),
-			stderr=subprocess.STDOUT
+			stderr=subprocess.STDOUT,
+			interrupt=signal.SIGKILL
 		)
 
 	# Hack to fix bad pkgs having 600/700 dependencies
@@ -135,11 +139,14 @@ def make_pkg(pkgname, arch):
 		PKGBUILD.write("pkgrel=%s\n" % pkgrel)
 
 	try:
-		subprocess.check_call(
-			['makechrootpkg', '-cu', '-l', 'build', '-d', "%s:/build/.ccache" %  ccache_dir(arch), '-r', chroot(arch), '--', '--noprogressbar'],
+		subproc.ccall([
+			'makechrootpkg', '-cu', '-l', 'build', '-d', "%s:/build/.ccache" %  ccache_dir(arch), '-r', chroot(arch),
+			'--', '--noprogressbar'],
 			cwd=build_dir_pkg,
 			stdout=open(os.path.join(build_dir_pkg, "makepkg.log"), 'w'),
-			stderr=subprocess.STDOUT
+			stderr=subprocess.STDOUT,
+			interrupt=signal.SIGINT,
+			int_active_child=True
 		)
 		for item in find_pkg_files(pkgname, directory=build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
@@ -311,7 +318,7 @@ try:
 					if repo_arch != "any":
 						try:
 							log.info("Cleanup orphaned pkg-file: %s" % ipkgname)
-							subprocess.call(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
+							subproc.ccall(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
 						except OSError:
 							pass
 
@@ -321,15 +328,23 @@ try:
 		# Create chroot, if missing
 		if not os.path.exists(chroot_root(arch)):
 			log.warning("Creating %s build root" % arch)
-			subprocess.check_call(['mkarchroot',
+			subproc.ccall(['mkarchroot',
 				'-C', '/usr/share/aurbs/cfg/pacman.conf.%s' % arch,
 				'-M', '/usr/share/aurbs/cfg/makepkg.conf.%s' % arch,
 				chroot_root(arch),
-				'base-devel', 'ccache', 'git'
-			])
+				'base-devel', 'ccache', 'git'],
+				interrupt=signal.SIGINT,
+				int_active_child=True,
+				stdout=sys.stdout,
+				stderr=sys.stderr
+			)
 
 		log.info("Updating %s build root" % arch)
-		subprocess.check_call(["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"])
+		subproc.ccall(
+			["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"],
+			interrupt=signal.SIGINT,
+			int_active_child=True,
+		)
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
 			if batch_mode:
@@ -337,7 +352,7 @@ try:
 				pkgs_scheduled = [e for e in filter(lambda i: i not in pkg_checked, AurBSConfig().aurpkgs)]
 				try:
 					pkgs_scheduled.remove(pkg)
-				except:
+				except Exception:
 					pass # already build as dependency
 				pkgs_done = [e for e in pkg_checked.keys()]
 			else:
@@ -349,10 +364,11 @@ try:
 		db.set_status(scheduled=[], done=pkgs_done, arch=arch)
 	if batch_mode:
 		log.warning("Publishing repos")
-		subprocess.call([
+		subproc.ccall([
 			"rsync", "-P", "-rlptgo", "--delete", "--include", "*/", "--include", "*.pkg.tar.*", "--exclude", "*",
-			repodir(""), repodir_public("")
-		])
+			repodir(""), repodir_public("")],
+			interrupt.signal.SIGINT
+		)
 		for repo_arch in AurBSConfig().architectures:
 			log.info("Creating %s repo db" % (repo_arch))
 			repodb_name = "%s.db" % AurBSConfig().public_repo['name']
@@ -367,7 +383,5 @@ try:
 except FatalError as e:
 	log.error("Fatal Error: %s" % e)
 	sys.exit(1)
-except ProcessLookupError:
-	pass
 finally:
 	webserver.stop()

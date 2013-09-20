@@ -378,6 +378,14 @@ try:
 						os.remove(os.path.join(repodir_public(repo_arch), filename))
 			shutil.copyfile(os.path.join(repodir(repo_arch), 'aurstaging.db.tar.gz'), repodb_file)
 			os.symlink('%s.tar.gz' % repodb_name, repodb_link)
+		if 'url' in AurBSConfig().public_repo['rsync']:
+			log.warning("RSyncing to remote location")
+			subproc.ccall([
+				"rsync", "-P", "-rlptgo", "--delete",
+				repodir_public(""), AurBSConfig().public_repo['rsync']['url']],
+				env={"RSYNC_PASSWORD": AurBSConfig().public_repo['rsync'].get('pass', '')},
+				interrupt=signal.SIGINT
+			)
 except FatalError as e:
 	log.error("Fatal Error: %s" % e)
 	sys.exit(1)

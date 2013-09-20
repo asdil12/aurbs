@@ -11,6 +11,11 @@ public_repo:
 	# http_url: Alternative public url
 	# otherwise /<name> will be used and served
 	#http_url: http://domain.net/aurbs
+	rsync:
+		# url: RSYNC target url to sync to after building
+		# pass: RSYNC password
+		#url: aurbs@domain.net::aurbs
+		#pass: secretrsyncpwd
 
 architectures:
 	- x86_64

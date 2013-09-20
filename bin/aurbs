@@ -170,6 +170,16 @@ def check_pkg(pkgname, arch, do_build=False):
 	if pkgname in pkg_checked:
 		return pkg_checked[pkgname]
 
+	# set status
+	if batch_mode:
+		pkgs_scheduled = [e for e in filter(lambda i: i not in pkg_checked, AurBSConfig().aurpkgs)]
+		pkgs_scheduled.remove(pkg)
+		pkgs_done = [e for e in pkg_checked.keys()]
+	else:
+		pkgs_scheduled = []
+		pkgs_done = []
+	db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
+
 	build_blocked = False
 	problem_depends = []
 
@@ -347,18 +357,6 @@ try:
 		)
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
-			if batch_mode:
-				#TODO: write status page (and status log - check_pkg return...)
-				pkgs_scheduled = [e for e in filter(lambda i: i not in pkg_checked, AurBSConfig().aurpkgs)]
-				try:
-					pkgs_scheduled.remove(pkg)
-				except Exception:
-					pass # already build as dependency
-				pkgs_done = [e for e in pkg_checked.keys()]
-			else:
-				pkgs_scheduled = []
-				pkgs_done = []
-			db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
 			res = check_pkg(pkg, arch, args.force or args.forceall)
 		pkgs_done = [e for e in pkg_checked.keys()] if batch_mode else [pkg]
 		db.set_status(scheduled=[], done=pkgs_done, arch=arch)
@@ -367,7 +365,7 @@ try:
 		subproc.ccall([
 			"rsync", "-P", "-rlptgo", "--delete", "--include", "*/", "--include", "*.pkg.tar.*", "--exclude", "*",
 			repodir(""), repodir_public("")],
-			interrupt.signal.SIGINT
+			interrupt=signal.SIGINT
 		)
 		for repo_arch in AurBSConfig().architectures:
 			log.info("Creating %s repo db" % (repo_arch))

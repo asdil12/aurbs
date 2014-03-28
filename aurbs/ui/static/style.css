@@ -35,3 +35,27 @@ a.resultlabel:not([href]) {
 .resultlabel.label-info[href] {
     background-color: #3A87AD;
 }
+
+
+/* ANSI colors - see http://en.wikipedia.org/wiki/ANSI_escape_code#Colors */
+.sgr0, .sgr {
+	color: #333333;
+	font-weight: normal;
+	font-style: normal;
+}
+.sgr1 { font-weight: bold; }
+.sgr3 { font-style: italic; }
+
+.sgr21 { font-weight: normal; }
+.sgr23 { font-style: normal; }
+
+/* foreground colors */
+.sgr30 { color: #333333; }
+.sgr31 { color: #bd362f; }
+.sgr32 { color: #51a351; }
+.sgr33 { color: #f89406; }
+.sgr34 { color: #0044cc; }
+.sgr35 { color: #purple; }
+.sgr36 { color: #2f96b4; }
+.sgr37 { color: #white; }
+.sgr39 { color: #333333; }

@@ -21,62 +21,40 @@
  *
  * https://github.com/mmalecki/ansispan/
  *
-*/
+ */
+
+
+/*
+ * see http://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+ *
+ * Sequence start: »\033[«
+ * Sequence end:   »m«
+ * Sequence content: SGR parameters, seperated with »;«
+ */
 
 var ansispan = function (str) {
-  str = str.replace(/\r\n/mg, "\n");
-  while( !(str.indexOf("\r") === -1) ) {
-    str = str.replace(/^.*\r([^\r]*)$/mg, "$1")
-  }
-  Object.keys(ansispan.foregroundColors).forEach(function (ansi) {
-    var span = '<span style="color: ' + ansispan.foregroundColors[ansi] + '">';
+	str = str.replace(/\r\n/mg, "\n");
+	while( !(str.indexOf("\r") === -1) ) {
+		str = str.replace(/^.*\r([^\r]*)$/mg, "$1")
+	}
 
-    //
-    // `\033[Xm` == `\033[0;Xm` sets foreground color to `X`.
-    //
+	str = str.replace(/\033\[([^m]*)m/g, function(sequence) {
+		var sgr_params = RegExp.$1.split(';');
+		var style = [];
+		if (sgr_params.length == 0 || sgr_params.indexOf('0') > -1) {
+			style.push( "sgr0" );
+		}
+		else {
+			sgr_params.forEach(function(sgr) {
+				style.push( 'sgr' + sgr );
+			});
+		}
+		return '<span class="' + style.join(' ') + '">';
+	});
 
-    str = str.replace(
-      new RegExp('\033\\[' + ansi + 'm', 'g'),
-      span
-    ).replace(
-      new RegExp('\033\\[0;' + ansi + 'm', 'g'),
-      span
-    );
-  });
-  //
-  // `\033[1m` enables bold font, `\033[22m` disables it
-  //
-  str = str.replace(/\033\[1m/g, '<span style="font-weight: bold;">').replace(/\033\[22m/g, '</span>');
-
-  //
-  // `\033[3m` enables italics font, `\033[23m` disables it
-  //
-  str = str.replace(/\033\[3m/g, '<span style="font-style: italic;>').replace(/\033\[23m/g, '</span>');
-
-  // this is ugly as hell and not xhtml, but it works
-  // the browser will close my tags until parent pre close
-  // contact me with better ideas...
-  exitstr = '<span style="color: #333; font-weight: normal; font-style: normal;">'
-
-  str = str.replace(/\033\[m/g, exitstr);
-  str = str.replace(/\033\[0m/g, exitstr);
-
-  // universal reset
-  str = str.replace(/\033\(B/g, exitstr);
-
-  return str.replace(/\033\[39m/g, exitstr);
+	return str;
 };
 
-ansispan.foregroundColors = {
-  '30': 'black',
-  '31': '#bd362f', // red
-  '32': '#51a351', // green
-  '33': '#f89406', // yellow
-  '34': '#0044cc', // blue
-  '35': 'purple',
-  '36': '#2f96b4', // cyan
-  '37': 'white'
-};
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ansispan;

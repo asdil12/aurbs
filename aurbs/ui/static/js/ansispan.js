@@ -34,6 +34,7 @@
 
 var ansispan = function (str) {
 	str = str.replace(/\r\n/mg, "\n");
+	str = str.replace(/\033\(B/mg, "");
 	while( !(str.indexOf("\r") === -1) ) {
 		str = str.replace(/^.*\r([^\r]*)$/mg, "$1")
 	}

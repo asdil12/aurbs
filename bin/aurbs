@@ -143,6 +143,7 @@ def make_pkg(pkgname, arch):
 			'makechrootpkg', '-cu', '-l', 'build', '-d', "%s:/build/.ccache" %  ccache_dir(arch), '-r', chroot(arch),
 			'--', '--noprogressbar'],
 			cwd=build_dir_pkg,
+			env={'SUDO_UID': '1234'},
 			stdout=open(os.path.join(build_dir_pkg, "makepkg.log"), 'w'),
 			stderr=subprocess.STDOUT,
 			interrupt=signal.SIGINT,

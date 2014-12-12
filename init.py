@@ -93,7 +93,7 @@ for arch in archs:
 	mkdir('var/cache/aurbs/build/%s' % arch)
 
 	mkdir('var/cache/aurbs/ccache/%s' % arch)
-	chown('var/cache/aurbs/ccache/%s' % arch, 99, 99)
+	chown('var/cache/aurbs/ccache/%s' % arch, 1234, 99)
 
 	mkdir('var/lib/aurbs/chroot/%s' % arch)
 

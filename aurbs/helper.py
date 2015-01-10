@@ -72,3 +72,11 @@ def try_mkdir(directory):
 	except OSError as e:
 		if not e.errno == 17:
 			raise
+
+class AurInfoEcatcher(object):
+	def __init__(self, pkgname, logger):
+		self.pkgname = pkgname
+		self.logger = logger
+
+	def Catch(self, lineno, error):
+		self.logger.warning("Parse error in '%s' SRCINFO line %d: %s" % (self.pkgname, lineno, error))

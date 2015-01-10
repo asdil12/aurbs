@@ -10,7 +10,7 @@ from pymongo import MongoClient
 
 from aurbs import aur
 from aurbs import dummy
-from aurbs import pkg_parser
+from aurbs import aurinfo
 from aurbs.config import AurBSConfig
 from aurbs.model import *
 from aurbs.static import *
@@ -47,19 +47,33 @@ class Database(object):
 			raise KeyError("Package '%s' not found in database" % pkgname)
 
 	def sync_pkg(self, pkgname):
+		# download the src pkg
 		aur.sync(pkgname)
-		tar = tarfile.open(os.path.join(srcpkgdir, '%s.tar.gz' % pkgname))
-		pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkgname))
+
+		# get some info via api
 		pkg = aur.get_pkg(pkgname)
+
+		# parse the .SRCINFO/.AURINFO file from the src pkg
+		# using https://github.com/falconindy/pkgbuild-introspection/blob/master/test/aurinfo.py
+		tar = tarfile.open(os.path.join(srcpkgdir, '%s.tar.gz' % pkgname))
+		if '%s/.AURINFO' % pkgname in tar.getnames():
+			srcinfo = tar.extractfile('%s/.AURINFO' % pkgname)
+		elif '%s/.SRCINFO' % pkgname in tar.getnames():
+			srcinfo = tar.extractfile('%s/.SRCINFO' % pkgname)
+
+		srcinfo = srcinfo.read().decode("UTF-8").split("\n")
+		srcinfo = aurinfo.ParseAurinfoFromIterable(srcinfo, AurInfoEcatcher(pkgname, log))
+		srcinfo = srcinfo.GetMergedPackage(pkgname)
+		pkg['arch'] = srcinfo['arch']
 		try:
-			pkg['depends'] = clean_dep_ver(pkgbuild['depends'])
+			pkg['depends'] = clean_dep_ver(srcinfo['depends'])
 		except KeyError:
 			pkg['depends'] = []
 		try:
-			pkg['makedepends'] = clean_dep_ver(pkgbuild['makedepends'])
+			pkg['makedepends'] = clean_dep_ver(srcinfo['makedepends'])
 		except KeyError:
 			pkg['makedepends'] = []
-		pkg['arch'] = pkgbuild['arch']
+
 		if not self._db.packages.update({"name": pkgname}, {"$set": pkg})['n']:
 			self._db.packages.insert(pkg)
 

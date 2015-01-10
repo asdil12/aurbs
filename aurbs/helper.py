@@ -65,3 +65,10 @@ def set_chmod(basedir, dirs, files):
 			os.chmod(os.path.join(r, d), dirs)
 		for f in fs:
 			os.chmod(os.path.join(r, f), files)
+
+def try_mkdir(directory):
+	try:
+		os.makedirs(directory)
+	except OSError as e:
+		if not e.errno == 17:
+			raise

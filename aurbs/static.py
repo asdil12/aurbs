@@ -12,6 +12,9 @@ def chroot(arch):
 def chroot_root(arch):
 	return os.path.join(chroot(arch), 'root')
 
+def chroot_build(arch):
+	return os.path.join(chroot(arch), 'build')
+
 def build_dir(arch):
 	return os.path.join('/var/cache/aurbs/build', arch)
 

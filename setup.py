@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
 	name='aurbs',
-	version='1.1.3',
+	version='1.1.4',
 	license='GPL',
 	description='Automatic AUR package building system',
 	author='Dominik Heidler',
@@ -15,6 +15,7 @@ setup(
 	scripts=['bin/aurbs'],
 	data_files=[
 		('/etc', ['templates/aurbs.yml']),
+		('/usr/share/aurbs/cfg', ['templates/gpg.conf']),
 		('/usr/share/doc/aurbs', ['templates/lighttpd.conf.sample']),
 	],
 )

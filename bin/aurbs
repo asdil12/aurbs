@@ -138,9 +138,17 @@ def make_pkg(pkgname, arch):
 		PKGBUILD.write("\n# Injected by aurbs to track rebuilds\n")
 		PKGBUILD.write("pkgrel=%s\n" % pkgrel)
 
+	# hack to make systemd-nspawn happy (make sure that the src bind dir exists)
+	gpgdir = os.path.join(chroot_build(arch), "tmp/.gnupg")
+	try_mkdir(gpgdir)
+	os.chown(gpgdir, 1234, 99)
+
 	try:
 		subproc.ccall([
-			'makechrootpkg', '-cu', '-l', 'build', '-d', "%s:/build/.ccache" %  ccache_dir(arch), '-r', chroot(arch),
+			'makechrootpkg', '-c', '-l', 'build',
+			'-d', "%s:/build/.ccache" % ccache_dir(arch),
+			'-d', "%s:/build/.gnupg" % gpgdir,
+			'-r', chroot(arch),
 			'--', '--noprogressbar'],
 			cwd=build_dir_pkg,
 			env={'SUDO_UID': '1234'},
@@ -350,12 +358,21 @@ try:
 				stderr=sys.stderr
 			)
 
+		# update chroot
 		log.info("Updating %s build root" % arch)
 		subproc.ccall(
 			["arch-nspawn", chroot_root(arch), "pacman", "-Syu", "--noconfirm", "--noprogressbar"],
 			interrupt=signal.SIGINT,
 			int_active_child=True,
 		)
+		# configure gpg skeleton to automaticly load keys
+		gpgdir = os.path.join(chroot_root(arch), "tmp/.gnupg")
+		try_mkdir(gpgdir)
+		os.chown(gpgdir, 1234, 99)
+		gpgfile = os.path.join(gpgdir, "gpg.conf")
+		shutil.copy("/usr/share/aurbs/cfg/gpg.conf", gpgfile)
+		os.chown(gpgfile, 1234, 99)
+
 		pkg_checked = {}
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
 			res = check_pkg(pkg, arch, args.force or args.forceall)

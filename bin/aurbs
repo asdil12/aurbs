@@ -323,11 +323,23 @@ try:
 		# Delete all db entries (pkgs, problems and builds), that are not in AurBSConfig().aurpkgs
 		db.cleanup_orphaned()
 
+		# Delete all srcpkgs, that are not in AurBSConfig().aurpkgs
+		for srcpkg in os.listdir(srcpkgdir):
+			if srcpkg.replace('.tar.gz', '') not in AurBSConfig().aurpkgs:
+				log.info("Cleanup orphaned srcpkg: %s" % srcpkg)
+				os.remove(os.path.join(srcpkgdir, srcpkg))
+
+		# Delete all build dirs, that don't belong to pkgs in AurBSConfig().aurpkgs
+		for arch in AurBSConfig().architectures:
+			for pkg_builddir in os.listdir(build_dir(arch)):
+				if pkg_builddir not in AurBSConfig().aurpkgs:
+					log.info("Cleanup orphaned build dir: %s/%s" % (arch, pkg_builddir))
+					shutil.rmtree(os.path.join(build_dir(arch), pkg_builddir))
+
 		# Delete all files and (repo) db entries, that have no matching build
 		repo_archs = AurBSConfig().architectures.copy()
 		repo_archs.append("any")
 		for repo_arch in repo_archs:
-			#TODO: also build dirs, etc
 			for item in find_pkg_files(directory=repodir(repo_arch)):
 				item_name = item.rsplit(".", 3)[0]
 				[ipkgname, ipkgver, ipkgrel, iarch] = item_name.rsplit("-", 3)

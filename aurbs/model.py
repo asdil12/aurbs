@@ -21,3 +21,6 @@ class Dependency(object):
 
 class FatalError(Exception):
 	pass
+
+class PKGSyncNeeded(Exception):
+	pass

@@ -18,6 +18,7 @@ from aurbs import subproc
 
 from aurbs.static import *
 from aurbs.helper import *
+from aurbs.model import *
 
 def signal_handler(signal, frame):
 	sys.exit(128 + signal)
@@ -210,17 +211,17 @@ def check_pkg(pkgname, arch, do_build=False):
 			src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
 			if not os.path.exists(src_pkg):
 				log.warning("AUR-PKG '%s' src-pkg not found --> syncing" % pkgname)
-				raise
-		except Exception:
+				raise PKGSyncNeeded()
+		except KeyError:
 			log.warning("AUR-PKG '%s' not found in local db --> syncing" % pkgname)
-			raise
+			raise PKGSyncNeeded()
 		if version_newer(pkg_local['version'], pkg_aur['version']):
 			log.warning("AUR-PKG '%s' outdated in local db --> resyncing" % pkgname)
-			raise
+			raise PKGSyncNeeded()
 		else:
-			# Refresh pkg details
+			# Refresh unimportant pkg details (votes, new maintainer, etc)
 			db.update_pkg(pkgname, pkg_aur)
-	except Exception:
+	except PKGSyncNeeded:
 		db.sync_pkg(pkgname)
 		pkg_local = db.get_pkg(pkgname)
 

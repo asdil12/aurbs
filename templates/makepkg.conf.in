@@ -19,6 +19,13 @@ DLAGENTS=('ftp::/usr/bin/curl -fC - --ftp-pasv --retry 3 --retry-delay 3 -o %o %
 # /usr/bin/lftpget -c
 # /usr/bin/wget
 
+#-- The the package required by makepkg to download VCS sources
+#  Format: 'protocol::package'
+VCSCLIENTS=('bzr::bzr'
+            'git::git'
+            'hg::mercurial'
+            'svn::subversion')
+
 #########################################################################
 # ARCHITECTURE, COMPILE FLAGS
 #########################################################################
@@ -30,27 +37,29 @@ CHOST="%CHOST%"
 # -march (or -mcpu) builds exclusively for an architecture
 # -mtune optimizes for an architecture, but builds for whole processor family
 CPPFLAGS="-D_FORTIFY_SOURCE=2"
-CFLAGS="-march=%MARCH% -mtune=generic -O2 -pipe -fstack-protector --param=ssp-buffer-size=4"
-CXXFLAGS="-march=%MARCH% -mtune=generic -O2 -pipe -fstack-protector --param=ssp-buffer-size=4"
+CFLAGS="-march=%MARCH% -mtune=generic -O2 -pipe -fstack-protector-strong --param=ssp-buffer-size=4"
+CXXFLAGS="-march=%MARCH% -mtune=generic -O2 -pipe -fstack-protector-strong --param=ssp-buffer-size=4"
 LDFLAGS="-Wl,-O1,--sort-common,--as-needed,-z,relro"
 #-- Make Flags: change this for DistCC/SMP systems
 MAKEFLAGS="-j1"
+#-- Debugging flags
+DEBUG_CFLAGS="-g -fvar-tracking-assignments"
+DEBUG_CXXFLAGS="-g -fvar-tracking-assignments"
 
 #########################################################################
 # BUILD ENVIRONMENT
 #########################################################################
 #
-# Defaults: BUILDENV=(fakeroot !distcc color !ccache check !sign)
+# Defaults: BUILDENV=(!distcc color !ccache check !sign)
 #  A negated environment option will do the opposite of the comments below.
 #
-#-- fakeroot: Allow building packages as a non-root user
 #-- distcc:   Use the Distributed C/C++/ObjC compiler
 #-- color:    Colorize output messages
 #-- ccache:   Use ccache to cache compilation
 #-- check:    Run the check() function if present in the PKGBUILD
 #-- sign:     Generate PGP signature file
 #
-BUILDENV=(fakeroot !distcc color ccache check !sign)
+BUILDENV=(!distcc color ccache check !sign)
 #
 #-- If using DistCC, your MAKEFLAGS will also need modification. In addition,
 #-- specify a space-delimited list of hosts running in the DistCC cluster.
@@ -64,7 +73,7 @@ BUILDENV=(fakeroot !distcc color ccache check !sign)
 #   These are default values for the options=() settings
 #########################################################################
 #
-# Default: OPTIONS=(strip docs libtool staticlibs emptydirs zipman purge !upx !debug)
+# Default: OPTIONS=(strip docs !libtool !staticlibs emptydirs zipman purge !upx !debug)
 #  A negated option will do the opposite of the comments below.
 #
 #-- strip:      Strip symbols from binaries/libraries
@@ -77,7 +86,7 @@ BUILDENV=(fakeroot !distcc color ccache check !sign)
 #-- upx:        Compress binary executable files using UPX
 #-- debug:      Add debugging flags as specified in DEBUG_* variables
 #
-OPTIONS=(strip docs libtool staticlibs emptydirs zipman purge !upx !debug)
+OPTIONS=(strip docs !libtool !staticlibs emptydirs zipman purge !upx !debug)
 
 #-- File integrity checks to use. Valid: md5, sha1, sha256, sha384, sha512
 INTEGRITY_CHECK=(md5)
@@ -106,6 +115,8 @@ PURGE_TARGETS=(usr/{,share}/info/dir .packlist *.pod)
 #SRCDEST=/home/sources
 #-- Source packages: specify a fixed directory where all src packages will be placed
 #SRCPKGDEST=/home/srcpackages
+#-- Log files: specify a fixed directory where all log files will be placed
+#LOGDEST=/home/makepkglogs
 #-- Packager: name/email of the person or organization building packages
 #PACKAGER="AUR BS <aurbs@aurbs.local>"
 #-- Specify a key to use for package signing

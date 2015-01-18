@@ -52,11 +52,6 @@ def copy(src, dst):
 	print(path)
 	shutil.copy(src, path)
 
-def chown(path, uid, gid):
-	path = rp(path)
-	print("CHOWN: %s" % path)
-	os.chown(path, uid, gid)
-
 def process_template(infile, outfile, tvars, skip_existing=False):
 	txt = open(os.path.join('templates', infile)).read()
 	for key, value in tvars.items():
@@ -93,7 +88,6 @@ for arch in archs:
 	mkdir('var/cache/aurbs/build/%s' % arch)
 
 	mkdir('var/cache/aurbs/ccache/%s' % arch)
-	chown('var/cache/aurbs/ccache/%s' % arch, 1234, 99)
 
 	mkdir('var/lib/aurbs/chroot/%s' % arch)
 

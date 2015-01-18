@@ -1,10 +1,13 @@
-- pacman -S devtools rsync python-setuptools python-simplejson python-yaml python-pymongo python-flask pyalpm
-- yaourt -S python-flup-hg
+- `pacman -S devtools rsync python-setuptools python-simplejson python-yaml python-pymongo python-flask pyalpm`
+- `yaourt -S python-flup-hg`
 - run `make install`
+- `useradd --system -c 'aurbs daemon user' -g daemon -d /var/cache/aurbs -s /bin/bash aurbs`
+- `chown -R aurbs: /var/cache/aurbs/ccache/*`
+- `chown -R aurbs: /var/cache/aurbs/build/*`
 - set PACKAGER in `/etc/makepkg.conf`
 - modify `/etc/aurbs.yml` to define you pkgs and archs
 - make sure that mongodb is running
-- run `aurbs.py` to build pkgs
+- run `aurbs` to build pkgs
 
 
 For the UI:

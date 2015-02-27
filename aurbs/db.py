@@ -11,6 +11,7 @@ from pymongo import MongoClient
 from aurbs import aur
 from aurbs import dummy
 from aurbs import aurinfo
+from aurbs import pkg_parser
 from aurbs.config import AurBSConfig
 from aurbs.model import *
 from aurbs.static import *
@@ -60,10 +61,19 @@ class Database(object):
 			srcinfo = tar.extractfile('%s/.AURINFO' % pkgname)
 		elif '%s/.SRCINFO' % pkgname in tar.getnames():
 			srcinfo = tar.extractfile('%s/.SRCINFO' % pkgname)
+		else:
+			# legacy mode: ancent pkg withoud .SRCINFO/.AURINFO
+			# --> need to parse PKGBUILD
+			log.info("Falling back to legacy PKGBUILD parser for pkg '%s'" % pkgname)
+			pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkgname))
 
-		srcinfo = srcinfo.read().decode("UTF-8").split("\n")
-		srcinfo = aurinfo.ParseAurinfoFromIterable(srcinfo, AurInfoEcatcher(pkgname, log))
-		srcinfo = srcinfo.GetMergedPackage(pkgname)
+		try:
+			srcinfo = srcinfo.read().decode("UTF-8").split("\n")
+			srcinfo = aurinfo.ParseAurinfoFromIterable(srcinfo, AurInfoEcatcher(pkgname, log))
+			srcinfo = srcinfo.GetMergedPackage(pkgname)
+		except NameError:
+			srcinfo = pkgbuild
+
 		pkg['arch'] = srcinfo['arch']
 		try:
 			pkg['depends'] = clean_dep_ver(srcinfo['depends'])

@@ -157,7 +157,7 @@ def make_pkg(pkgname, arch):
 		env["SUDO_UID"] = str(getpwnam('aurbs').pw_uid) # for running makepkg in the chroot
 		env["SUDO_USER"] = "aurbs" # for downloading the sources (outside chroot)
 		subproc.ccall([
-			'makechrootpkg', '-c', '-l', 'build',
+			'makechrootpkg', '-cu', '-l', 'build',
 			'-d', "%s:/build/.ccache" % ccache_dir(arch),
 			'-d', "/var/cache/aurbs/.gnupg:/build/.gnupg",
 			'-r', chroot(arch),

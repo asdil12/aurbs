@@ -147,7 +147,7 @@ def make_pkg(pkgname, arch):
 	shutil.rmtree(gpgdir, ignore_errors=True)
 	os.mkdir(gpgdir)
 	os.chown(gpgdir, getpwnam('aurbs').pw_uid, getpwnam('aurbs').pw_gid)
-	os.link("/usr/share/aurbs/cfg/gpg.conf", os.path.join(gpgdir, "gpg.conf"))
+	shutil.copy("/usr/share/aurbs/cfg/gpg.conf", os.path.join(gpgdir, "gpg.conf"))
 
 	# hack to allow makepkg to download sources as aurbs user
 	os.chown(build_dir_pkg, getpwnam('aurbs').pw_uid, getpwnam('aurbs').pw_gid)

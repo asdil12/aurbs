@@ -1,4 +1,4 @@
-- `pacman -S devtools rsync python-setuptools python-simplejson python-yaml python-pymongo python-flask pyalpm`
+- `pacman -S devtools rsync python-setuptools python-simplejson python-yaml python-pymongo python-flask pyalpm ccache`
 - `yaourt -S python-flup-hg`
 - run `make install`
 - `useradd --system -c 'aurbs daemon user' -g daemon -d /var/cache/aurbs -s /bin/bash aurbs`

@@ -70,19 +70,29 @@ class Database(object):
 		try:
 			srcinfo = srcinfo.read().decode("UTF-8").split("\n")
 			srcinfo = aurinfo.ParseAurinfoFromIterable(srcinfo, AurInfoEcatcher(pkgname, log))
-			srcinfo = srcinfo.GetMergedPackage(pkgname)
+			# handle splitpkgs
+			pkg['provides'] = list(srcinfo.GetPackageNames())
+			srcinfo = [srcinfo.GetMergedPackage(splitpkg) for splitpkg in pkg['provides']]
 		except NameError:
-			srcinfo = pkgbuild
+			srcinfo = [pkgbuild]
 
-		pkg['arch'] = srcinfo['arch']
-		try:
-			pkg['depends'] = clean_dep_ver(srcinfo['depends'])
-		except KeyError:
-			pkg['depends'] = []
-		try:
-			pkg['makedepends'] = clean_dep_ver(srcinfo['makedepends'])
-		except KeyError:
-			pkg['makedepends'] = []
+		pkg['arch'] = srcinfo[0]['arch']
+		pkg['depends'] = []
+		pkg['makedepends'] = []
+
+		for splitpkg in srcinfo:
+			pkg['depends'].extend(clean_dep_ver(splitpkg.get('depends', [])))
+			pkg['makedepends'].extend(clean_dep_ver(splitpkg.get('makedepends', [])))
+			pkg['provides'].extend(clean_dep_ver(splitpkg.get('provides', [])))
+
+		# drop duplicate entries
+		pkg['depends'] = list(set(pkg['depends']))
+		pkg['makedepends'] = list(set(pkg['makedepends']))
+		pkg['provides'] = list(set(pkg['provides']))
+
+		# filter loop deps pointing to provides of this pkg
+		pkg['depends'] = list(filter(lambda d: d not in pkg['provides'], pkg['depends']))
+		pkg['makedepends'] = list(filter(lambda d: d not in pkg['provides'], pkg['makedepends']))
 
 		if not self._db.packages.update({"name": pkgname}, {"$set": pkg})['n']:
 			self._db.packages.insert(pkg)

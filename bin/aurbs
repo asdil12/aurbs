@@ -417,7 +417,7 @@ try:
 			if 'url' in AurBSConfig().public_repo['rsync']:
 				log.warning("RSyncing to remote location")
 				subproc.ccall([
-					"rsync", "-P", "-rlptgo", "--delete",
+					"rsync", "-P", "-rlpt", "--delete",
 					repodir_public(""), AurBSConfig().public_repo['rsync']['url']],
 					env={"RSYNC_PASSWORD": AurBSConfig().public_repo['rsync'].get('pass', '')},
 					interrupt=signal.SIGINT

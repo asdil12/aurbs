@@ -92,7 +92,7 @@ def package_view(pkgname):
 			builds[arch] = find_pkg_files(pkg.get('splitpkgs', pkgname), directory=repodir(arch))
 		except (IndexError, FileNotFoundError):
 			pass
-	local_depends = filter_dependencies([pkg['depends']], local=True)
+	local_depends = db.filter_dependencies([pkg['depends']], local=True)
 	required_by = db.get_pkg_required_by(pkgname)
 	return render_template("package_view.html", pkg=pkg, results=results, local_depends=local_depends, required_by=required_by, builds=builds)
 

@@ -87,12 +87,12 @@ def make_pkg(pkgname, arch):
 
 	# Remember dependencies
 	deps = []
-	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=False):
+	for dep in db.filter_dependencies([pkg['depends'], pkg['makedepends']], local=False):
 		try:
 			deps.append({'name': dep, 'version': remote_pkgver(dep, arch)})
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
-	for dep in filter_dependencies([pkg['depends'], pkg['makedepends']], local=True):
+	for dep in db.filter_dependencies([pkg['depends'], pkg['makedepends']], local=True):
 		try:
 			dep_build = db.get_result(dep, build_arch=arch, rtype='build')
 			deps.append({'name': dep, 'version': dep_build['version'], 'release': dep_build['release']})
@@ -249,7 +249,7 @@ def check_pkg(pkgname, arch, do_build=False):
 		pkg_build = False
 
 	# Check for remote dependency updates and missing remote deps
-	remote_deps = filter_dependencies([pkg_local['depends']], local=False)
+	remote_deps = db.filter_dependencies([pkg_local['depends']], local=False)
 	for dep in remote_deps:
 		try:
 			ver_remote = remote_pkgver(dep, arch)
@@ -278,9 +278,10 @@ def check_pkg(pkgname, arch, do_build=False):
 		return pkg_checked[pkgname]
 
 	# Check for local dependencs updates
-	local_deps = filter_dependencies([pkg_local['depends'], pkg_local['makedepends']], local=True)
+	local_deps = db.filter_dependencies([pkg_local['depends'], pkg_local['makedepends']], local=True)
 	for dep in local_deps:
 		# Rebuild trigger
+		dep = db.get_provider(dep)['name']
 		dep_res = check_pkg(dep, arch, args.forceall)
 		if dep_res == Dependency.rebuilt:
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))

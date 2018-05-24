@@ -33,17 +33,6 @@ def remote_pkgver(pkgname, arch):
 def version_newer(old, new):
 	return parse_version(new) > parse_version(old)
 
-def filter_dependencies(args, local=True, nofilter=False):
-	deps = set()
-	for arg in args:
-		deps = deps.union(arg)
-	if nofilter:
-		return deps
-	if local:
-		return [d for d in deps if d in AurBSConfig().aurpkgs]
-	else:
-		return [d for d in deps if d not in AurBSConfig().aurpkgs]
-
 def find_pkg_files(pkgname=None, directory=None):
 	if not directory:
 		return []
@@ -51,7 +40,7 @@ def find_pkg_files(pkgname=None, directory=None):
 	for item in os.listdir(directory):
 		if item.endswith('pkg.tar.xz'):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-			if pkgname is None or ipkgname == pkgname:
+			if pkgname is None or ipkgname == pkgname or ipkgname in pkgname:
 				respkgs.append(item)
 	return respkgs
 

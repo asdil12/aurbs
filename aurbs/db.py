@@ -54,6 +54,19 @@ class Database(object):
 		else:
 			raise KeyError("Package '%s' not found in database" % pkgname)
 
+	def get_provider(self, pkgname):
+		pkg = self._db.packages.find_one({"provides": pkgname})
+		if pkg:
+			return pkg
+		else:
+			raise KeyError("Package '%s' not found in database" % pkgname)
+
+	def get_all_provides(self):
+		provides = set()
+		for pkg in self._db.packages.find({}):
+			provides.union(pkg['provides'])
+		return provides
+
 	def sync_pkg(self, pkgname):
 		# download the src pkg
 		aur.sync(pkgname)
@@ -246,3 +259,16 @@ class Database(object):
 				if result['name'] not in AurBSConfig().aurpkgs:
 					self._db["%ss" % rtype].remove({'name': result['name']})
 					log.info("Cleanup orphaned db result-entry: %s" % result['name'])
+
+	def filter_dependencies(self, args, local=True, nofilter=False):
+		deps = set()
+		for arg in args:
+			deps = deps.union(arg)
+		if nofilter:
+			return deps
+		pkgs = set(AurBSConfig().aurpkgs)
+		pkgs.union(self.get_all_provides())
+		if local:
+			return [d for d in deps if d in pkgs]
+		else:
+			return [d for d in deps if d not in pkgs]

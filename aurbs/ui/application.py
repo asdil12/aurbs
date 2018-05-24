@@ -89,7 +89,7 @@ def package_view(pkgname):
 			else:
 				results[arch] = {'rtype': 'disabled'}
 		try:
-			builds[arch] = find_pkg_files(pkgname, directory=repodir(arch))[0]
+			builds[arch] = find_pkg_files(pkg.get('splitpkgs', pkgname), directory=repodir(arch))
 		except (IndexError, FileNotFoundError):
 			pass
 	local_depends = filter_dependencies([pkg['depends']], local=True)

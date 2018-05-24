@@ -45,8 +45,10 @@
 							<th>Builds:</th>
 							<td>
 								<ul>
-								{% for arch, build in builds.items() %}
-									<li><a href="{{ url_for('aurstaging_get', arch=arch, pkg=build, _external=True) }}">{{ build }}</a></li>
+								{% for arch, buildlist in builds.items() %}
+									{% for build in buildlist %}
+										<li><a href="{{ url_for('aurstaging_get', arch=arch, pkg=build, _external=True) }}">{{ build }}</a></li>
+									{% endfor %}
 								{% endfor %}
 								</ul>
 							</td>

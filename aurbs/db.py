@@ -47,6 +47,13 @@ class Database(object):
 		else:
 			raise KeyError("Package '%s' not found in database" % pkgname)
 
+	def get_pkgbase(self, pkgname):
+		pkg = self._db.packages.find_one({"splitpkgs": pkgname})
+		if pkg:
+			return pkg
+		else:
+			raise KeyError("Package '%s' not found in database" % pkgname)
+
 	def sync_pkg(self, pkgname):
 		# download the src pkg
 		aur.sync(pkgname)
@@ -71,6 +78,7 @@ class Database(object):
 			srcinfo = srcinfo.read().decode("UTF-8").split("\n")
 			srcinfo = aurinfo.ParseAurinfoFromIterable(srcinfo, AurInfoEcatcher(pkgname, log))
 			# handle splitpkgs
+			pkg['splitpkgs'] = list(srcinfo.GetPackageNames())
 			pkg['provides'] = list(srcinfo.GetPackageNames())
 			srcinfo = [srcinfo.GetMergedPackage(splitpkg) for splitpkg in pkg['provides']]
 		except NameError:

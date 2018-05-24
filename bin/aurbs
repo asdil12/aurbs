@@ -52,8 +52,8 @@ else:
 log.addHandler(loghandler)
 
 
-def publish_pkg(pkgname, arch, version):
-	pkg = db.get_pkg(pkgname)
+def publish_pkg(pkgbase, pkgname, arch, version):
+	pkg = db.get_pkg(pkgbase)
 	arch_publish = 'any' if pkg['arch'][0] == 'any' else arch
 	filename = '%s-%s-%s.pkg.tar.xz' % (pkgname, version, arch_publish)
 	repo_archs = AurBSConfig().architectures if arch_publish == 'any' else [arch]
@@ -75,7 +75,7 @@ def publish_pkg(pkgname, arch, version):
 	if os.path.isfile(os.path.join(cachedir, filename)):
 		os.remove(os.path.join(cachedir, filename))
 
-	shutil.copyfile(os.path.join(build_dir(arch), pkgname, filename), os.path.join(repodir(arch_publish), filename))
+	shutil.copyfile(os.path.join(build_dir(arch), pkgbase, filename), os.path.join(repodir(arch_publish), filename))
 	for repo_arch in repo_archs:
 		if arch_publish == 'any':
 			os.symlink(os.path.join('..', arch_publish, filename), os.path.join(repodir(repo_arch), filename))
@@ -169,11 +169,11 @@ def make_pkg(pkgname, arch):
 			interrupt=signal.SIGINT,
 			int_active_child=True
 		)
-		for item in find_pkg_files(pkgname, directory=build_dir_pkg):
+		for item in find_pkg_files(pkg.get('splitpkgs', pkgname), directory=build_dir_pkg):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.info("Publishing pkg '%s'" % item)
 			ver_publish = '%s-%s' % (ipkgver, ipkgrel)
-			publish_pkg(pkgname, arch, ver_publish)
+			publish_pkg(pkgname, ipkgname, arch, ver_publish)
 			# Cleanup built pkg
 			os.remove(os.path.join(build_dir_pkg, item))
 		db.set_result(pkgname, arch, 'build', linkdepends=deps, release=release)
@@ -355,7 +355,8 @@ try:
 				item_name = item.rsplit(".", 3)[0]
 				[ipkgname, ipkgver, ipkgrel, iarch] = item_name.rsplit("-", 3)
 				try:
-					ibuild = db.get_result(ipkgname, arch=iarch, rtype='build')
+					pkgbase = db.get_pkgbase(ipkgname)
+					ibuild = db.get_result(pkgbase['name'], arch=iarch, rtype='build')
 				except KeyError:
 					os.remove(os.path.join(repodir(repo_arch), item))
 					if repo_arch != "any":

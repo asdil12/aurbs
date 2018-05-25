@@ -8,7 +8,7 @@ setup(
 	license='GPL',
 	description='Automatic AUR package building system',
 	author='Dominik Heidler',
-	author_email='dheidler@gmail.com',
+	author_email='dominik@heidler.eu',
 	url='http://github.com/asdil12/aurbs',
 	requires=['flask', 'flup'],
 	packages=['aurbs', 'aurbs.ui'],

@@ -410,12 +410,17 @@ try:
 			repodb_name = "%s.db" % AurBSConfig().public_repo['name']
 			repodb_file = os.path.join(repodir_public(repo_arch), '%s.tar.gz' % repodb_name)
 			repodb_link = os.path.join(repodir_public(repo_arch), repodb_name)
+			filesdb_name = "%s.files" % AurBSConfig().public_repo['name']
+			filesdb_file = os.path.join(repodir_public(repo_arch), '%s.tar.gz' % filesdb_name)
+			filesdb_link = os.path.join(repodir_public(repo_arch), filesdb_name)
 			for filename in os.listdir(repodir_public(repo_arch)):
-				for key in [".db", ".db.old", ".db.tar.gz"]:
+				for key in [".db", ".db.old", ".db.tar.gz", ".files", "files.tar.gz", "files.tar.gz.old"]:
 					if filename.endswith(key):
 						os.remove(os.path.join(repodir_public(repo_arch), filename))
 			shutil.copyfile(os.path.join(repodir(repo_arch), 'aurstaging.db.tar.gz'), repodb_file)
+			shutil.copyfile(os.path.join(repodir(repo_arch), 'aurstaging.files.tar.gz'), filesdb_file)
 			os.symlink('%s.tar.gz' % repodb_name, repodb_link)
+			os.symlink('%s.tar.gz' % filesdb_name, filesdb_link)
 		if AurBSConfig().public_repo['rsync'] is not None and 'url' in AurBSConfig().public_repo['rsync']:
 			log.warning("RSyncing to remote location")
 			subproc.ccall([

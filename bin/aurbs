@@ -151,6 +151,8 @@ def make_pkg(pkgname, arch):
 	# hack to allow makepkg to download sources as aurbs user
 	os.chown(build_dir_pkg, getpwnam('aurbs').pw_uid, getpwnam('aurbs').pw_gid)
 
+	build_logfile = os.path.join(build_dir_pkg, "makepkg.log")
+
 	try:
 		env = os.environ.copy()
 		env["SUDO_UID"] = str(getpwnam('aurbs').pw_uid) # for running makepkg in the chroot
@@ -163,7 +165,7 @@ def make_pkg(pkgname, arch):
 			'--', '--noprogressbar'],
 			cwd=build_dir_pkg,
 			env=env,
-			stdout=open(os.path.join(build_dir_pkg, "makepkg.log"), 'w'),
+			stdout=open(build_logfile, 'w'),
 			stderr=subprocess.STDOUT,
 			interrupt=signal.SIGINT,
 			int_active_child=True
@@ -180,7 +182,7 @@ def make_pkg(pkgname, arch):
 		return True
 	except Exception as e:
 		log.warning("Error: %s" % e)
-		log.error("Failed building '%s'" % pkgname)
+		log.error("Failed building '%s' - for details see %s" % (pkgname, build_logfile))
 		db.set_result(pkgname, arch, 'problem', ptype='fail', linkdepends=deps)
 		if args.strict:
 			raise FatalError('Build Failure')
@@ -395,6 +397,7 @@ try:
 			res = check_pkg(pkg, arch, args.force or args.forceall)
 		pkgs_done = [e for e in pkg_checked.keys()] if batch_mode else [pkg]
 		db.set_status(scheduled=[], done=pkgs_done, arch=arch)
+
 	if batch_mode:
 		log.warning("Publishing repos")
 		subproc.ccall([

@@ -9,6 +9,7 @@ import logging.handlers
 import argparse
 import signal
 from pwd import getpwnam
+from contextlib import suppress
 
 from aurbs import aur
 from aurbs.config import AurBSConfig
@@ -63,10 +64,8 @@ def publish_pkg(pkgbase, pkgname, arch, version):
 		for item in find_pkg_files(pkgname, directory=repodir(repo_arch)):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
 			log.debug("Removing '%s' from %s repo db" % (ipkgname, repo_arch))
-			try:
+			with suppress(OSError):
 				subproc.ccall(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
-			except OSError:
-				pass
 			os.remove(os.path.join(repodir(repo_arch), item))
 	for item in find_pkg_files(pkgname, directory=repodir('any')):
 		os.remove(os.path.join(repodir('any'), item))
@@ -281,7 +280,8 @@ def check_pkg(pkgname, arch, do_build=False):
 	local_deps = db.filter_dependencies([pkg_local['depends'], pkg_local['makedepends']], local=True)
 	for dep in local_deps:
 		# Rebuild trigger
-		dep = db.get_provider(dep)['name']
+		with suppress(KeyError):
+			dep = db.get_provider(dep)['name']
 		dep_res = check_pkg(dep, arch, args.forceall)
 		if dep_res == Dependency.rebuilt:
 			log.warning("Local Dependency '%s' of AUR-PKG '%s' rebuilt --> rebuilding" % (dep, pkgname))
@@ -361,11 +361,9 @@ try:
 				except KeyError:
 					os.remove(os.path.join(repodir(repo_arch), item))
 					if repo_arch != "any":
-						try:
+						with suppress(OSError):
 							log.info("Cleanup orphaned pkg-file: %s" % ipkgname)
 							subproc.ccall(['repo-remove', 'aurstaging.db.tar.gz', ipkgname], cwd=repodir(repo_arch))
-						except OSError:
-							pass
 
 	for arch in AurBSConfig().architectures if not args.arch else [args.arch]:
 		log.info("Building for architecture %s" % arch)

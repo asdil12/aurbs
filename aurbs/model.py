@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 class Singleton(object):
 	def __init__(self, cls):

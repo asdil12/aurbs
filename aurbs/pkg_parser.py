@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 # This is a parser for bash-style variable assignments.
 # It fully (?) supports the syntax w/o braces, the ${}-syntax

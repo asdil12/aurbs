@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 from aurbs import model
 from aurbs.config import AurBSConfig

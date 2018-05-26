@@ -37,6 +37,7 @@ parser.add_argument('-v', '--verbose', action='store_true', help='Set log to DEB
 parser.add_argument('-s', '--strict', action='store_true', help='Exit on build failures')
 parser.add_argument('-f', '--force', action='store_true', help='Force rebuild')
 parser.add_argument('-F', '--forceall', action='store_true', help='Force rebuild also dependencies')
+parser.add_argument('-S', '--forcesync', action='store_true', help='Force resync all packages')
 parser.add_argument('-a', '--arch', help='Set build architecture')
 args = parser.parse_args()
 
@@ -205,37 +206,8 @@ def check_pkg(pkgname, arch, do_build=False):
 	build_blocked = False
 	problem_depends = []
 
-	log.debug("Inquiring local pkg: %s" % pkgname)
-
-	try:
-		pkg_aur = aur.get_pkg(pkgname)
-	except Exception:
-		db.set_result(pkgname, arch, 'problem', ptype='not_in_aur')
-		if args.strict:
-			raise FatalError('PKG not in AUR: %s' % pkgname)
-		pkg_checked[pkgname] = Dependency.blocked
-		return pkg_checked[pkgname]
-
-	# Check PKG in local db & up to date
-	try:
-		try:
-			pkg_local = db.get_pkg(pkgname)
-			src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
-			if not os.path.exists(src_pkg):
-				log.warning("AUR-PKG '%s' src-pkg not found --> syncing" % pkgname)
-				raise PKGSyncNeeded()
-		except KeyError:
-			log.warning("AUR-PKG '%s' not found in local db --> syncing" % pkgname)
-			raise PKGSyncNeeded()
-		if version_newer(pkg_local['version'], pkg_aur['version']):
-			log.warning("AUR-PKG '%s' outdated in local db --> resyncing" % pkgname)
-			raise PKGSyncNeeded()
-		else:
-			# Refresh unimportant pkg details (votes, new maintainer, etc)
-			db.update_pkg(pkgname, pkg_aur)
-	except PKGSyncNeeded:
-		db.sync_pkg(pkgname)
-		pkg_local = db.get_pkg(pkgname)
+	log.debug("Checking local pkg: %s" % pkgname)
+	pkg_local = db.get_pkg(pkgname)
 
 	# Check against previous build
 	try:
@@ -319,6 +291,41 @@ def check_pkg(pkgname, arch, do_build=False):
 		pkg_checked[pkgname] = Dependency.ok
 	return pkg_checked[pkgname]
 
+def sync_pkg(pkgname, force_sync=False):
+	log.debug("Inquiring local pkg: %s" % pkgname)
+
+	try:
+		pkg_aur = aur.get_pkg(pkgname)
+	except Exception:
+		db.set_result(pkgname, arch, 'problem', ptype='not_in_aur')
+		if args.strict:
+			raise FatalError('PKG not in AUR: %s' % pkgname)
+		pkg_checked[pkgname] = Dependency.blocked
+
+	# Check PKG in local db & up to date
+	try:
+		try:
+			pkg_local = db.get_pkg(pkgname)
+			src_pkg = os.path.join('/var/cache/aurbs/srcpkgs', '%s.tar.gz' % pkgname)
+			if not os.path.exists(src_pkg):
+				log.warning("AUR-PKG '%s' src-pkg not found --> syncing" % pkgname)
+				raise PKGSyncNeeded()
+		except KeyError:
+			log.warning("AUR-PKG '%s' not found in local db --> syncing" % pkgname)
+			raise PKGSyncNeeded()
+		if version_newer(pkg_local['version'], pkg_aur['version']):
+			log.warning("AUR-PKG '%s' outdated in local db --> resyncing" % pkgname)
+			raise PKGSyncNeeded()
+		if force_sync:
+			log.warning("AUR-PKG '%s' forced resync via CLI --> resyncing" % pkgname)
+			raise PKGSyncNeeded()
+		else:
+			# Refresh unimportant pkg details (votes, new maintainer, etc)
+			db.update_pkg(pkgname, pkg_aur)
+	except PKGSyncNeeded:
+		db.sync_pkg(pkgname)
+		pkg_local = db.get_pkg(pkgname)
+
 
 # Initialize config
 log.debug("Reading config from '%s'" % args.config)
@@ -393,6 +400,8 @@ try:
 		)
 
 		pkg_checked = {}
+		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
+			sync_pkg(pkg, args.forcesync)
 		for pkg in AurBSConfig().aurpkgs if not args.pkg else [args.pkg]:
 			res = check_pkg(pkg, arch, args.force or args.forceall)
 		pkgs_done = [e for e in pkg_checked.keys()] if batch_mode else [pkg]

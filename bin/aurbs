@@ -237,7 +237,7 @@ def check_pkg(pkgname, arch, do_build=False):
 				if version_newer(ver_local, ver_remote):
 					log.warning("Remote Dependency '%s' of AUR-PKG '%s' updated (%s -> %s) --> rebuilding" % (dep, pkgname, ver_local, ver_remote))
 					do_build = True
-			except KeyError:
+			except (KeyError, StopIteration):
 				# This only happens if a packager added a dependency
 				# without increasing the pkgrel
 				log.warning("Remote Dependency '%s' of AUR-PKG '%s' added (%s) --> rebuilding" % (dep, pkgname, ver_remote))

@@ -93,6 +93,8 @@ def make_pkg(pkgname, arch):
 		except KeyError:
 			log.error("Build: Dependency '%s' for '%s' not found!" % (dep, pkgname))
 	for dep in db.filter_dependencies([pkg['depends'], pkg['makedepends']], local=True):
+		with suppress(KeyError):
+			dep = db.get_provider(dep)['name']
 		try:
 			dep_build = db.get_result(dep, build_arch=arch, rtype='build')
 			deps.append({'name': dep, 'version': dep_build['version'], 'release': dep_build['release']})

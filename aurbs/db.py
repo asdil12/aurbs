@@ -77,15 +77,16 @@ class Database(object):
 		# parse the .SRCINFO/.AURINFO file from the src pkg
 		# using https://github.com/falconindy/pkgbuild-introspection/blob/master/test/aurinfo.py
 		tar = tarfile.open(os.path.join(srcpkgdir, '%s.tar.gz' % pkgname))
-		if '%s/.AURINFO' % pkgname in tar.getnames():
-			srcinfo = tar.extractfile('%s/.AURINFO' % pkgname)
-		elif '%s/.SRCINFO' % pkgname in tar.getnames():
-			srcinfo = tar.extractfile('%s/.SRCINFO' % pkgname)
+		if '%s/.AURINFO' % pkg['pkgbase'] in tar.getnames():
+			srcinfo = tar.extractfile('%s/.AURINFO' % pkg['pkgbase'])
+		elif '%s/.SRCINFO' % pkg['pkgbase'] in tar.getnames():
+			srcinfo = tar.extractfile('%s/.SRCINFO' % pkg['pkgbase'])
 		else:
 			# legacy mode: ancent pkg withoud .SRCINFO/.AURINFO
 			# --> need to parse PKGBUILD
 			log.info("Falling back to legacy PKGBUILD parser for pkg '%s'" % pkgname)
-			pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkgname))
+			pkgbuild = pkg_parser.parseFile(tar.extractfile('%s/PKGBUILD' % pkg['pkgbase']))
+			#FIXME: legacy mode fails because there are no pkg['provides'] and pkg['splitpkgs']
 
 		try:
 			srcinfo = srcinfo.read().decode("UTF-8").split("\n")

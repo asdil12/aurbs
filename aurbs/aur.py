@@ -33,6 +33,7 @@ def convert_data(r):
 		"id": r['ID'],
 		"version": r['Version'],
 		"name": r['Name'],
+		"pkgbase": r['PackageBase'],
 		"srcpkg": 'https://aur.archlinux.org' + r['URLPath'],
 		"votes": r['NumVotes'],
 	}

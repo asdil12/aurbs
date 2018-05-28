@@ -269,9 +269,13 @@ def check_pkg(pkgname, arch, do_build=False):
 		# any pkg's are not rebuilt, as this would lead to building them still for each arch
 		elif not do_build and not pkg_local['arch'][0] == 'any':
 			# pkg_build IS set here - otherwise do_build would be true
-			dep_build_release_link = by_name(pkg_build['linkdepends'], dep)['release']
-			dep_build_release_available = db.get_result(dep, build_arch=arch, rtype='build')['release']
-			if dep_build_release_link < dep_build_release_available:
+			try:
+				dep_build_release_link = by_name(pkg_build['linkdepends'], dep)['release']
+				dep_build_release_available = db.get_result(dep, build_arch=arch, rtype='build')['release']
+				if dep_build_release_link < dep_build_release_available:
+					log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
+					do_build = True
+			except StopIteration:
 				log.warning("Local Dependency '%s' of AUR-PKG '%s' updated --> rebuilding" % (dep, pkgname))
 				do_build = True
 

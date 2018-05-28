@@ -62,10 +62,10 @@ class Database(object):
 			raise KeyError("Package '%s' not found in database" % pkgname)
 
 	def get_all_provides(self):
-		provides = set()
+		provides = []
 		for pkg in self._db.packages.find({}):
-			provides.union(pkg['provides'])
-		return provides
+			provides.extend(pkg['provides'])
+		return set(provides)
 
 	def sync_pkg(self, pkgname):
 		# download the src pkg
@@ -268,7 +268,7 @@ class Database(object):
 		if nofilter:
 			return deps
 		pkgs = set(AurBSConfig().aurpkgs)
-		pkgs.union(self.get_all_provides())
+		pkgs = pkgs.union(self.get_all_provides())
 		if local:
 			return [d for d in deps if d in pkgs]
 		else:

@@ -42,18 +42,6 @@
 							</td>
 						</tr>
 						<tr>
-							<th>Builds:</th>
-							<td>
-								<ul>
-								{% for arch, buildlist in builds.items() %}
-									{% for build in buildlist %}
-										<li><a href="{{ url_for('aurstaging_get', arch=arch, pkg=build) }}">{{ build }}</a></li>
-									{% endfor %}
-								{% endfor %}
-								</ul>
-							</td>
-						</tr>
-						<tr>
 							<th>Local&nbsp;Dependencies:&nbsp;</th>
 							<td>
 								<ul>
@@ -73,6 +61,28 @@
 								<ul>
 								{% for dep in required_by %}
 									<li><a href="{{ url_for('package_view', pkgname=dep) }}">{{ dep }}</a></li>
+								{% endfor %}
+								</ul>
+							</td>
+						</tr>
+						<tr>
+							<th>Provides:</th>
+							<td>
+								<ul>
+								{% for provide in pkg.provides %}
+									<li>{{ provide }}</a></li>
+								{% endfor %}
+								</ul>
+							</td>
+						</tr>
+						<tr>
+							<th>Builds:</th>
+							<td>
+								<ul>
+								{% for arch, buildlist in builds.items() %}
+									{% for build in buildlist %}
+										<li><a href="{{ url_for('aurstaging_get', arch=arch, pkg=build) }}">{{ build }}</a></li>
+									{% endfor %}
 								{% endfor %}
 								</ul>
 							</td>

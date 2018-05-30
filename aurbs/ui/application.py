@@ -104,7 +104,7 @@ def package_view(pkgname):
 			local_depends.append({'name': dependency, 'provider': provider})
 		local_depends.append(dependency)
 
-	required_by = db.get_pkg_required_by(pkgname)
+	required_by = db.get_pkg_required_by(pkgname) if not pkg.get('dummy') else []
 
 	return render_template("package_view.html", pkg=pkg, results=results, local_depends=local_depends, required_by=required_by, builds=builds)
 

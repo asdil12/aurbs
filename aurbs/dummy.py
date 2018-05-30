@@ -15,6 +15,7 @@ def aurpkg(pkgname):
 		'arch': AurBSConfig().architectures,
 		'depends': [],
 		'makedepends': [],
+		'provides': [],
 		'srcpkg': 'https://aur.archlinux.org/packages/%s/%s/%s.tar.gz' % (pkgname[0:2], pkgname, pkgname),
 		'results': {},
 		'dummy': True,

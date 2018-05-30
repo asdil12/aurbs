@@ -40,7 +40,10 @@ def find_pkg_files(pkgname=None, directory=None):
 	for item in os.listdir(directory):
 		if item.endswith('pkg.tar.xz'):
 			[ipkgname, ipkgver, ipkgrel, iarch] = item.rsplit("-", 3)
-			if pkgname is None or ipkgname == pkgname or ipkgname in pkgname:
+			if pkgname is None or ipkgname == pkgname:
+				respkgs.append(item)
+			elif not isinstance(pkgname, str) and ipkgname in pkgname:
+				# splitpkg: pkgname is list of subpkgs
 				respkgs.append(item)
 	return respkgs
 

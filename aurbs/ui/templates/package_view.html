@@ -58,7 +58,11 @@
 							<td>
 								<ul>
 								{% for dep in local_depends %}
-									<li><a href="{{ url_for('package_view', pkgname=dep) }}">{{ dep }}</a></li>
+									{%- if dep.provider -%}
+										<li>{{ dep.name }} (<a href="{{ url_for('package_view', pkgname=dep.provider) }}">{{ dep.provider }}</a>)</li>
+									{%- else -%}
+										<li><a href="{{ url_for('package_view', pkgname=dep.name) }}">{{ dep.name }}</a></li>
+									{%- endif -%}
 								{% endfor %}
 								</ul>
 							</td>

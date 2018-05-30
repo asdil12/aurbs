@@ -239,11 +239,12 @@ class Database(object):
 		return status
 
 	def get_pkg_required_by(self, pkgname):
+		provides = set(self.get_pkg(pkgname)['provides'])
 		pkgs = []
 		for pkg in AurBSConfig().aurpkgs:
 			try:
 				pkg = self.get_pkg(pkg)
-				if pkgname in pkg['depends']:
+				if provides.intersection(pkg['depends']):
 					pkgs.append(pkg['name'])
 			except KeyError:
 				pass

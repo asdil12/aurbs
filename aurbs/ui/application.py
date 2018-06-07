@@ -96,7 +96,7 @@ def package_view(pkgname):
 	local_depends = []
 	for dependency in db.filter_dependencies([pkg['depends']], local=True):
 		try:
-			pkg = db.get_pkg(dependency)
+			db.get_pkg(dependency)
 			local_depends.append({'name': dependency})
 		except KeyError:
 			# pkg provided by provider

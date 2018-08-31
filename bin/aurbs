@@ -198,12 +198,12 @@ def check_pkg(pkgname, arch, do_build=False):
 	# set status
 	if batch_mode:
 		pkgs_scheduled = [e for e in filter(lambda i: i not in pkg_checked, AurBSConfig().aurpkgs)]
-		pkgs_scheduled.remove(pkg)
+		pkgs_scheduled.remove(pkgname)
 		pkgs_done = [e for e in pkg_checked.keys()]
 	else:
 		pkgs_scheduled = []
 		pkgs_done = []
-	db.set_status(pkgs_scheduled, pkgs_done, building=pkg, arch=arch)
+	db.set_status(pkgs_scheduled, pkgs_done, building=pkgname, arch=arch)
 
 	build_blocked = False
 	problem_depends = []
@@ -288,6 +288,7 @@ def check_pkg(pkgname, arch, do_build=False):
 
 	db.delete_result(pkgname, arch, 'problem')
 	if do_build:
+		db.set_status(pkgs_scheduled, pkgs_done, building=pkgname, arch=arch)
 		if make_pkg(pkgname, arch):
 			pkg_checked[pkgname] = Dependency.rebuilt
 		else:
